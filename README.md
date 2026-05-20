@@ -20,13 +20,33 @@ Only SDK, runtime, and engine artifacts are published here. Flutter applications
 
 ## Install Flutter SDK
 
-Download the Flutter SDK archive from this repository's GitHub Releases page, then extract it:
+On a LoongArch64/Loong64 UOS or deepin machine, install the Flutter SDK archive from the release page:
 
 ```bash
-mkdir -p "$HOME/opt"
-tar -xf flutter-sdk-linux-loong64-*.tar.xz -C "$HOME/opt"
-export FLUTTER_ROOT="$HOME/opt/flutter"
-export PATH="$FLUTTER_ROOT/bin:$PATH"
+mkdir -p "$HOME/opt" "$HOME/Downloads/flutter-loong64"
+cd "$HOME/Downloads/flutter-loong64"
+
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/loong64-20260520/flutter-sdk-linux-loong64-20260520-9b43981fc5d6-dartae9f14de3805-engine956656516182.tar.xz
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/loong64-20260520/SHA256SUMS
+
+sha256sum -c SHA256SUMS
+
+tar -xf flutter-sdk-linux-loong64-20260520-9b43981fc5d6-dartae9f14de3805-engine956656516182.tar.xz -C "$HOME/opt"
+```
+
+Add Flutter to your shell environment:
+
+```bash
+echo 'export FLUTTER_ROOT=$HOME/opt/flutter' >> "$HOME/.bashrc"
+echo 'export PATH=$FLUTTER_ROOT/bin:$PATH' >> "$HOME/.bashrc"
+source "$HOME/.bashrc"
+```
+
+Verify the install:
+
+```bash
+flutter --version --suppress-analytics
+dart --version
 ```
 
 Enable Linux desktop and Loong64 support:
@@ -36,21 +56,56 @@ flutter config --enable-linux-desktop
 flutter config --enable-loong64
 ```
 
-For a native Loong64 Linux desktop build:
+Build a native Loong64 Linux desktop application:
 
 ```bash
+cd your_flutter_app
+flutter pub get
 flutter build linux --release --target-platform linux-loong64
+```
+
+The release bundle is normally created under:
+
+```bash
+build/linux/loong64/release/bundle/
 ```
 
 The patched Flutter tool recognizes `loongarch64` hosts, uses `linux-loong64` engine artifacts, and supports `linux-loong64` as a Linux desktop target platform.
 
 ## Install Dart SDK Only
 
-Download the Dart SDK archive from GitHub Releases and extract it:
+If you only need the Dart SDK:
 
 ```bash
-mkdir -p "$HOME/opt"
-tar -xf dart-sdk-linux-loong64-*.tar.xz -C "$HOME/opt"
+mkdir -p "$HOME/opt" "$HOME/Downloads/dart-loong64"
+cd "$HOME/Downloads/dart-loong64"
+
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/loong64-20260520/dart-sdk-linux-loong64-20260520-ae9f14de3805.tar.xz
+tar -xf dart-sdk-linux-loong64-20260520-ae9f14de3805.tar.xz -C "$HOME/opt"
+
+echo 'export PATH=$HOME/opt/dart-sdk/bin:$PATH' >> "$HOME/.bashrc"
+source "$HOME/.bashrc"
+
+dart --version
+dart pub --help
+```
+
+To verify the Dart SDK archive with the release checksums:
+
+```bash
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/loong64-20260520/SHA256SUMS
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+The published release page is:
+
+```text
+https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/tag/loong64-20260520
+```
+
+For temporary one-shell use without changing `.bashrc`:
+
+```bash
 export PATH="$HOME/opt/dart-sdk/bin:$PATH"
 dart --version
 ```
