@@ -26,12 +26,12 @@ On a LoongArch64/Loong64 UOS or deepin machine, install the Flutter SDK archive 
 mkdir -p "$HOME/opt" "$HOME/Downloads/flutter-loong64"
 cd "$HOME/Downloads/flutter-loong64"
 
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/loong64-20260520/flutter-sdk-linux-loong64-20260520-9b43981fc5d6-dartae9f14de3805-engine956656516182.tar.xz
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/loong64-20260520/SHA256SUMS
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/flutter-sdk-linux-loong64-20260520.1-9b43981fc5d6-dartae9f14de3805-enginea7a98649a2c8-fontconfig.tar.xz
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/SHA256SUMS
 
 sha256sum -c SHA256SUMS
 
-tar -xf flutter-sdk-linux-loong64-20260520-9b43981fc5d6-dartae9f14de3805-engine956656516182.tar.xz -C "$HOME/opt"
+tar -xf flutter-sdk-linux-loong64-20260520.1-9b43981fc5d6-dartae9f14de3805-enginea7a98649a2c8-fontconfig.tar.xz -C "$HOME/opt"
 ```
 
 Add Flutter to your shell environment:
@@ -80,8 +80,8 @@ If you only need the Dart SDK:
 mkdir -p "$HOME/opt" "$HOME/Downloads/dart-loong64"
 cd "$HOME/Downloads/dart-loong64"
 
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/loong64-20260520/dart-sdk-linux-loong64-20260520-ae9f14de3805.tar.xz
-tar -xf dart-sdk-linux-loong64-20260520-ae9f14de3805.tar.xz -C "$HOME/opt"
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/dart-sdk-linux-loong64-20260520.1-ae9f14de3805.tar.xz
+tar -xf dart-sdk-linux-loong64-20260520.1-ae9f14de3805.tar.xz -C "$HOME/opt"
 
 echo 'export PATH=$HOME/opt/dart-sdk/bin:$PATH' >> "$HOME/.bashrc"
 source "$HOME/.bashrc"
@@ -93,14 +93,14 @@ dart pub --help
 To verify the Dart SDK archive with the release checksums:
 
 ```bash
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/loong64-20260520/SHA256SUMS
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
 The published release page is:
 
 ```text
-https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/tag/loong64-20260520
+https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/tag/v2026.05.20.1
 ```
 
 For temporary one-shell use without changing `.bashrc`:
@@ -173,11 +173,15 @@ ninja -C ../out/linux_release_loong64_gtk flutter/shell/platform/linux:flutter_g
 
 ## Release Naming
 
+Git tags use a version-only scheme and do not include the target architecture, for example:
+
+- `v2026.05.20.1`
+
 Release assets use this naming scheme:
 
-- `dart-sdk-linux-loong64-YYYYMMDD-<commit>.tar.xz`
-- `flutter-engine-linux-loong64-gtk-YYYYMMDD-<commit>.tar.xz`
-- `flutter-sdk-linux-loong64-YYYYMMDD-<commit>.tar.xz`
+- `dart-sdk-linux-loong64-YYYYMMDD.N-<dart-commit>.tar.xz`
+- `flutter-engine-linux-loong64-gtk-YYYYMMDD.N-<engine-commit>-dart<dart-commit>-fontconfig.tar.xz`
+- `flutter-sdk-linux-loong64-YYYYMMDD.N-<flutter-commit>-dart<dart-commit>-engine<engine-commit>-fontconfig.tar.xz`
 - `SHA256SUMS`
 
 Each release should record source commits for Flutter SDK, Dart SDK, and Flutter Engine.
