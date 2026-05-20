@@ -8,7 +8,7 @@ The source branches used for these builds live in:
 - Dart SDK: <https://github.com/Flutter-Dart-loong64/sdk>
 - Flutter Engine: <https://github.com/Flutter-Dart-loong64/engine>
 
-RustDesk, flutter-linglong-store, and other Flutter applications are not published here. They are only used as downstream validation projects.
+Only SDK, runtime, and engine artifacts are published here. Flutter applications are outside the scope of this release repository.
 
 ## Target Platform
 
@@ -63,7 +63,8 @@ The engine archive contains Linux GTK Loong64 artifacts built on a native LoongA
 
 - `libflutter_linux_gtk.so`
 - `gen_snapshot`
-- Flutter embedder headers and runtime artifacts when available
+- `icudtl.dat`
+- `flutter_linux/` embedder headers and CMake metadata
 
 To use a local engine with Flutter:
 
