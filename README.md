@@ -20,6 +20,21 @@ Only SDK, runtime, and engine artifacts are published here. Flutter applications
 - Runtime linker: `/lib64/ld-linux-loongarch-lp64d.so.1`
 - Desktop target: Linux GTK
 
+## SDK Versions
+
+Current published release:
+
+- Release tag: `v2026.05.20.1`
+- Flutter SDK version: `3.44.0-1.0.pre-616`
+- Flutter framework revision: `9b43981fc5d61f877795b4dad64d0cc67671753d`
+- Dart SDK version: `3.13.0-edge.ae9f14de38050f38180626ad07d8252ee2e968f5`
+- DevTools version: `2.58.0`
+- Flutter Engine source revision: `a7a98649a2c80b8a9839795680853428ff6de311`
+- Engine artifact target: `linux_loong64`
+- Engine options: Linux GTK release build with `--enable-fontconfig`
+
+The release tag is the archive release version. The Flutter SDK version is the framework version reported by `flutter --version`.
+
 ## Install Flutter SDK
 
 On a LoongArch64/Loong64 UOS or deepin machine, install the Flutter SDK archive from the release page:

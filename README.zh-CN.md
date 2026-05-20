@@ -18,6 +18,21 @@
 - 动态链接器：`/lib64/ld-linux-loongarch-lp64d.so.1`
 - 桌面目标：Linux GTK
 
+## SDK 版本
+
+当前发布版本：
+
+- Release tag：`v2026.05.20.1`
+- Flutter SDK 版本：`3.44.0-1.0.pre-616`
+- Flutter framework revision：`9b43981fc5d61f877795b4dad64d0cc67671753d`
+- Dart SDK 版本：`3.13.0-edge.ae9f14de38050f38180626ad07d8252ee2e968f5`
+- DevTools 版本：`2.58.0`
+- Flutter Engine 源码 revision：`a7a98649a2c80b8a9839795680853428ff6de311`
+- Engine artifact 目标：`linux_loong64`
+- Engine 构建选项：Linux GTK release，启用 `--enable-fontconfig`
+
+Release tag 是发布包版本号；Flutter SDK 版本以 `flutter --version` 输出的 framework 版本为准。
+
 ## 安装 Flutter SDK
 
 在 LoongArch64/Loong64 UOS 或 deepin 机器上下载发布包：
