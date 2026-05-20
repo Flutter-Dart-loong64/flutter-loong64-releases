@@ -9,10 +9,14 @@ fi
 release_id="$1"
 output_dir="$2"
 
-flutter_root="${FLUTTER_ROOT:-$HOME/Flutter/flutter}"
-dart_root="${DART_ROOT:-$HOME/Flutter/dart-sdk}"
-engine_src="${ENGINE_SRC:-$HOME/Flutter/engine/src}"
-engine_out="${ENGINE_OUT:-$engine_src/out/linux_release_loong64_gtk}"
+: "${FLUTTER_ROOT:?Set FLUTTER_ROOT to the Flutter SDK checkout path.}"
+: "${DART_ROOT:?Set DART_ROOT to the Dart SDK checkout path.}"
+: "${ENGINE_SRC:?Set ENGINE_SRC to the Flutter Engine source root.}"
+
+flutter_root="$FLUTTER_ROOT"
+dart_root="$DART_ROOT"
+engine_src="$ENGINE_SRC"
+engine_out="${ENGINE_OUT:-$flutter_root/bin/cache/artifacts/engine/linux-loong64-release}"
 
 mkdir -p "$output_dir"
 
@@ -22,7 +26,7 @@ engine_commit="$(git -C "$engine_src/flutter" rev-parse --short=12 HEAD)"
 xz_cmd="${XZ_CMD:-xz -T0 -6}"
 
 engine_entries=(libflutter_linux_gtk.so gen_snapshot icudtl.dat flutter_linux)
-for optional_entry in impellerc font-subset LICENSE.flutter_gtk.md; do
+for optional_entry in impellerc font-subset LICENSE.flutter_gtk.md shader_lib; do
   if [[ -e "$engine_out/$optional_entry" ]]; then
     engine_entries+=("$optional_entry")
   fi
@@ -46,6 +50,8 @@ tar -C "$(dirname "$flutter_root")" \
   --exclude='flutter/bin/cache/downloads' \
   --exclude='flutter/bin/cache/dart-sdk.old' \
   --exclude='flutter/bin/cache/artifacts/material_fonts' \
+  --exclude='flutter/bin/cache/artifacts/engine/linux-loong64-release/backup-before-*' \
+  --exclude='flutter/bin/cache/artifacts/engine/linux-loong64-release/gen_snapshot.15f-backup' \
   --exclude='flutter/**/build' \
   -I "$xz_cmd" \
   -cf "$output_dir/flutter-sdk-linux-loong64-${release_id}-${flutter_commit}.tar.xz" \

@@ -2,6 +2,8 @@
 
 This repository publishes experimental LoongArch64/Loong64 builds of the Flutter SDK, Dart SDK, and Flutter Engine for native Linux desktop development.
 
+Chinese documentation is available in [README.zh-CN.md](README.zh-CN.md).
+
 The source branches used for these builds live in:
 
 - Flutter SDK: <https://github.com/Flutter-Dart-loong64/flutter>
@@ -23,23 +25,25 @@ Only SDK, runtime, and engine artifacts are published here. Flutter applications
 On a LoongArch64/Loong64 UOS or deepin machine, install the Flutter SDK archive from the release page:
 
 ```bash
-mkdir -p "$HOME/opt" "$HOME/Downloads/flutter-loong64"
-cd "$HOME/Downloads/flutter-loong64"
+export INSTALL_DIR=/path/to/install-prefix
+export DOWNLOAD_DIR=/path/to/download-directory
+
+mkdir -p "$INSTALL_DIR" "$DOWNLOAD_DIR"
+cd "$DOWNLOAD_DIR"
 
 wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/flutter-sdk-linux-loong64-20260520.1-9b43981fc5d6-dartae9f14de3805-enginea7a98649a2c8-fontconfig.tar.xz
 wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/SHA256SUMS
 
 sha256sum -c SHA256SUMS
 
-tar -xf flutter-sdk-linux-loong64-20260520.1-9b43981fc5d6-dartae9f14de3805-enginea7a98649a2c8-fontconfig.tar.xz -C "$HOME/opt"
+tar -xf flutter-sdk-linux-loong64-20260520.1-9b43981fc5d6-dartae9f14de3805-enginea7a98649a2c8-fontconfig.tar.xz -C "$INSTALL_DIR"
 ```
 
-Add Flutter to your shell environment:
+Add Flutter to your shell environment. Put these exports in your shell profile if you want them to persist:
 
 ```bash
-echo 'export FLUTTER_ROOT=$HOME/opt/flutter' >> "$HOME/.bashrc"
-echo 'export PATH=$FLUTTER_ROOT/bin:$PATH' >> "$HOME/.bashrc"
-source "$HOME/.bashrc"
+export FLUTTER_ROOT="$INSTALL_DIR/flutter"
+export PATH="$FLUTTER_ROOT/bin:$PATH"
 ```
 
 Verify the install:
@@ -77,14 +81,16 @@ The patched Flutter tool recognizes `loongarch64` hosts, uses `linux-loong64` en
 If you only need the Dart SDK:
 
 ```bash
-mkdir -p "$HOME/opt" "$HOME/Downloads/dart-loong64"
-cd "$HOME/Downloads/dart-loong64"
+export DART_INSTALL_DIR=/path/to/install-prefix
+export DART_DOWNLOAD_DIR=/path/to/download-directory
+
+mkdir -p "$DART_INSTALL_DIR" "$DART_DOWNLOAD_DIR"
+cd "$DART_DOWNLOAD_DIR"
 
 wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/dart-sdk-linux-loong64-20260520.1-ae9f14de3805.tar.xz
-tar -xf dart-sdk-linux-loong64-20260520.1-ae9f14de3805.tar.xz -C "$HOME/opt"
+tar -xf dart-sdk-linux-loong64-20260520.1-ae9f14de3805.tar.xz -C "$DART_INSTALL_DIR"
 
-echo 'export PATH=$HOME/opt/dart-sdk/bin:$PATH' >> "$HOME/.bashrc"
-source "$HOME/.bashrc"
+export PATH="$DART_INSTALL_DIR/dart-sdk/bin:$PATH"
 
 dart --version
 dart pub --help
@@ -106,7 +112,7 @@ https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/tag/v2
 For temporary one-shell use without changing `.bashrc`:
 
 ```bash
-export PATH="$HOME/opt/dart-sdk/bin:$PATH"
+export PATH="$DART_INSTALL_DIR/dart-sdk/bin:$PATH"
 dart --version
 ```
 
@@ -124,7 +130,7 @@ The engine archive contains Linux GTK Loong64 artifacts built on a native LoongA
 To use a local engine with Flutter:
 
 ```bash
-export FLUTTER_ENGINE="$HOME/src/engine/src"
+export FLUTTER_ENGINE=/path/to/engine/src
 flutter build linux \
   --release \
   --target-platform linux-loong64 \
@@ -149,27 +155,50 @@ Package names may vary slightly across UOS/deepin releases.
 
 ## Build From Source
 
-Clone the patched repositories:
+For the complete native source build flow, including Dart SDK, Flutter Engine, Flutter SDK cache layout, fontconfig, and release packaging, see [BUILDING.md](BUILDING.md).
+
+Short version for a native LoongArch64 UOS/deepin host:
 
 ```bash
+export WORKSPACE=/path/to/loong64-flutter-workspace
+mkdir -p "$WORKSPACE/engine/src"
+cd "$WORKSPACE"
+
 git clone https://github.com/Flutter-Dart-loong64/sdk.git dart-sdk
 git clone https://github.com/Flutter-Dart-loong64/flutter.git flutter
 git clone https://github.com/Flutter-Dart-loong64/engine.git engine/src/flutter
 ```
 
-Build Dart SDK on a native LoongArch64 host:
+Build the Dart SDK:
 
 ```bash
 cd dart-sdk
 ./tools/build.py -m release -a loong64 --gn-args="use_sysroot=false" create_sdk
 ```
 
-Build the Linux GTK engine on a native LoongArch64 host:
+Build the Linux GTK engine. Keep `--enable-fontconfig`; the published SDK uses fontconfig for system font fallback on LoongArch64 desktops.
 
 ```bash
-cd engine/src/flutter
-ninja -C ../out/linux_release_loong64_gtk flutter/shell/platform/linux:flutter_gtk
+cd "$WORKSPACE/engine/src"
+export VPYTHON_BYPASS="manually managed python not supported by chrome operations"
+dart_commit="$(git -C "$WORKSPACE/dart-sdk" rev-parse HEAD)"
+
+./flutter/tools/gn \
+  --linux \
+  --linux-cpu loong64 \
+  --runtime-mode release \
+  --enable-fontconfig \
+  --no-enable-unittests \
+  --no-goma \
+  --target-sysroot / \
+  --prebuilt-dart-sdk \
+  --target-dir linux_release_loong64_gtk \
+  --gn-args="content_hash=\"$dart_commit\" system_libdir=\"lib/loongarch64-linux-gnu\" skia_use_vulkan=false shell_enable_vulkan=false impeller_enable_vulkan=false test_enable_vulkan=false"
+
+ninja -C out/linux_release_loong64_gtk libflutter_linux_gtk.so gen_snapshot
 ```
+
+After building, copy `libflutter_linux_gtk.so` and `gen_snapshot` into `flutter/bin/cache/artifacts/engine/linux-loong64-release/`, keeping both files on the same Dart/engine revision. Do not mix `gen_snapshot`, `libapp.so`, and `libflutter_linux_gtk.so` from different Dart commits.
 
 ## Release Naming
 
