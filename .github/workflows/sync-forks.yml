@@ -65,10 +65,12 @@ jobs:
           fi
 
           workdir="$(mktemp -d)"
-          trap 'rm -rf "$workdir"' EXIT
+          trap 'cd "$GITHUB_WORKSPACE"; rm -rf "$workdir" || true' EXIT
 
           git config --global user.name "guanzi008"
           git config --global user.email "245205080@qq.com"
+          git config --global gc.auto 0
+          git config --global maintenance.auto false
 
           git clone \
             --branch "$BRANCH" \
