@@ -6,7 +6,7 @@
 
 - Flutter SDK：<https://github.com/Flutter-Dart-loong64/flutter>
 - Dart SDK：<https://github.com/Flutter-Dart-loong64/sdk>
-- Flutter Engine：<https://github.com/Flutter-Dart-loong64/engine>
+- Flutter Engine 源码：Flutter fork 中的 `engine/src`
 
 本仓库只发布 SDK、runtime 和 engine artifacts，不发布具体 Flutter 应用。
 
@@ -22,12 +22,13 @@
 
 当前发布版本：
 
-- Release tag：`v2026.05.20.1`
-- Flutter SDK 版本：`3.44.0-1.0.pre-616`
-- Flutter framework revision：`9b43981fc5d61f877795b4dad64d0cc67671753d`
-- Dart SDK 版本：`3.13.0-edge.ae9f14de38050f38180626ad07d8252ee2e968f5`
+- Release tag：`v3.45.0-1.0.pre-174`
+- Flutter SDK 版本：`3.45.0-1.0.pre-174`
+- Flutter framework revision：`d2285105069eeaaae77619ddf63627bf646dcbf4`
+- Dart SDK 版本：`3.13.0-127.0.dev`
 - DevTools 版本：`2.58.0`
-- Flutter Engine 源码 revision：`a7a98649a2c80b8a9839795680853428ff6de311`
+- Flutter Engine 源码 revision：`d2285105069eeaaae77619ddf63627bf646dcbf4`
+- Engine content hash：`6f13d76618c7235203458cb1b67b0dbb6fb15af9`
 - Engine artifact 目标：`linux_loong64`
 - Engine 构建选项：Linux GTK release，启用 `--enable-fontconfig`
 
@@ -44,12 +45,12 @@ export DOWNLOAD_DIR=/path/to/download-directory
 mkdir -p "$INSTALL_DIR" "$DOWNLOAD_DIR"
 cd "$DOWNLOAD_DIR"
 
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/flutter-sdk-linux-loong64-20260520.1-9b43981fc5d6-dartae9f14de3805-enginea7a98649a2c8-fontconfig.tar.xz
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/SHA256SUMS
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-174/flutter-sdk-linux-loong64-3.45.0-1.0.pre-174-d2285105069e.tar.xz
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-174/SHA256SUMS
 
 sha256sum -c SHA256SUMS
 
-tar -xf flutter-sdk-linux-loong64-20260520.1-9b43981fc5d6-dartae9f14de3805-enginea7a98649a2c8-fontconfig.tar.xz -C "$INSTALL_DIR"
+tar -xf flutter-sdk-linux-loong64-3.45.0-1.0.pre-174-d2285105069e.tar.xz -C "$INSTALL_DIR"
 ```
 
 配置环境变量：
@@ -100,8 +101,8 @@ export DART_DOWNLOAD_DIR=/path/to/download-directory
 mkdir -p "$DART_INSTALL_DIR" "$DART_DOWNLOAD_DIR"
 cd "$DART_DOWNLOAD_DIR"
 
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/dart-sdk-linux-loong64-20260520.1-ae9f14de3805.tar.xz
-tar -xf dart-sdk-linux-loong64-20260520.1-ae9f14de3805.tar.xz -C "$DART_INSTALL_DIR"
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-174/dart-sdk-linux-loong64-3.45.0-1.0.pre-174-e650d226331b.tar.xz
+tar -xf dart-sdk-linux-loong64-3.45.0-1.0.pre-174-e650d226331b.tar.xz -C "$DART_INSTALL_DIR"
 
 export PATH="$DART_INSTALL_DIR/dart-sdk/bin:$PATH"
 
@@ -112,13 +113,13 @@ dart pub --help
 校验 Dart SDK：
 
 ```bash
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/SHA256SUMS
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-174/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
 ## 从源码构建
 
-完整源码构建流程见 [BUILDING.md](BUILDING.md)。下面是关键步骤。
+完整源码构建流程见 [BUILDING.md](BUILDING.md)。历史发布部署信息单独记录在 [releases/HISTORY.md](releases/HISTORY.md)。下面是关键步骤。
 
 安装依赖：
 
@@ -137,12 +138,11 @@ sudo apt install -y \
 
 ```bash
 export WORKSPACE=/path/to/loong64-flutter-workspace
-mkdir -p "$WORKSPACE/engine/src"
+mkdir -p "$WORKSPACE"
 cd "$WORKSPACE"
 
 git clone https://github.com/Flutter-Dart-loong64/sdk.git dart-sdk
 git clone https://github.com/Flutter-Dart-loong64/flutter.git flutter
-git clone https://github.com/Flutter-Dart-loong64/engine.git engine/src/flutter
 ```
 
 构建 Dart SDK：
@@ -163,7 +163,7 @@ cp -a "$WORKSPACE/dart-sdk/out/ReleaseLOONG64/dart-sdk" \
 构建 Linux GTK Engine。必须保留 `--enable-fontconfig`，否则 UOS/deepin 上中文字体 fallback 容易异常：
 
 ```bash
-cd "$WORKSPACE/engine/src"
+cd "$WORKSPACE/flutter/engine/src"
 export VPYTHON_BYPASS="manually managed python not supported by chrome operations"
 dart_commit="$(git -C "$WORKSPACE/dart-sdk" rev-parse HEAD)"
 
@@ -185,7 +185,7 @@ ninja -C out/linux_release_loong64_gtk libflutter_linux_gtk.so gen_snapshot
 安装 engine artifacts 到 Flutter SDK cache：
 
 ```bash
-engine_out="$WORKSPACE/engine/src/out/linux_release_loong64_gtk"
+engine_out="$WORKSPACE/flutter/engine/src/out/linux_release_loong64_gtk"
 engine_cache="$WORKSPACE/flutter/bin/cache/artifacts/engine/linux-loong64-release"
 
 mkdir -p "$engine_cache"
@@ -197,7 +197,7 @@ cp -a "$engine_out/font-subset" "$engine_cache/" 2>/dev/null || true
 cp -a "$engine_out/shader_lib" "$engine_cache/" 2>/dev/null || true
 
 if [ ! -d "$engine_cache/flutter_linux" ]; then
-  cp -a "$WORKSPACE/engine/src/flutter/shell/platform/linux/public/flutter_linux" \
+  cp -a "$WORKSPACE/flutter/engine/src/flutter/shell/platform/linux/public/flutter_linux" \
     "$engine_cache/flutter_linux"
 fi
 ```
@@ -224,6 +224,15 @@ Git tag 使用纯版本号，不把架构写进 tag，例如：
 - `flutter-engine-linux-loong64-gtk-YYYYMMDD.N-<engine-commit>-dart<dart-commit>-fontconfig.tar.xz`
 - `flutter-sdk-linux-loong64-YYYYMMDD.N-<flutter-commit>-dart<dart-commit>-engine<engine-commit>-fontconfig.tar.xz`
 - `SHA256SUMS`
+
+## 自动化
+
+本仓库包含两个 GitHub Actions workflow：
+
+- `Sync Loong64 Forks`：把 `sdk`、`engine`、`flutter`、`native` fork 分支变基到各自上游分支。它只更新 fork 分支，不构建、不发布 release。发生冲突时对应仓库会中止并跳过，不会改动 fork。
+- `Dart Tag QEMU Loong64 Release`：只基于上游 Dart SDK tag 构建发布包，不因普通分支变基或 fork 提交触发发布构建。定时任务检测最新上游 Dart tag，如果对应 GitHub Release 已存在就跳过。它只会把 fork 分支相对上游 `main` 多出来的 Loong64 提交应用到目标 tag；如果补丁无法干净应用到该 tag，本次发布构建会跳过。默认容器镜像不适用时，可以通过仓库变量 `LOONG64_QEMU_IMAGE` 指定镜像。发布 tag 使用纯版本号，例如 `v3.13.0`；资产文件名中保留 `loong64` 架构标识。
+
+同步 fork 需要配置 `SYNC_TOKEN` secret，并给它 fork 仓库写权限；没有这个 secret 时 workflow 会直接跳过，不改动任何仓库。
 
 ## 常见问题
 

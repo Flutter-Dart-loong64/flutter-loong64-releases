@@ -1,0 +1,108 @@
+name: Dart Tag QEMU Loong64 Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      dart_tag:
+        description: "Upstream dart-lang/sdk tag to build. Empty means latest upstream version tag."
+        required: false
+  schedule:
+    - cron: "11 20 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    outputs:
+      dart_tag: ${{ steps.tags.outputs.dart_tag }}
+      release_tag: ${{ steps.tags.outputs.release_tag }}
+      should_build: ${{ steps.tags.outputs.should_build }}
+    steps:
+      - name: Resolve Dart SDK tag
+        id: tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_DART_TAG: ${{ inputs.dart_tag }}
+        run: |
+          set -euo pipefail
+
+          dart_tag="${INPUT_DART_TAG:-}"
+          if [[ -z "$dart_tag" ]]; then
+            dart_tag="$(
+              git ls-remote --tags --sort=-version:refname https://github.com/dart-lang/sdk.git 'refs/tags/[0-9]*' |
+                awk '{print $2}' |
+                sed 's#refs/tags/##; s#\\^{}##' |
+                head -1
+            )"
+          fi
+
+          if [[ -z "$dart_tag" ]]; then
+            echo "No upstream Dart SDK tag was found." >&2
+            exit 1
+          fi
+
+          release_tag="v${dart_tag#v}"
+
+          if gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            should_build=false
+            echo "Release ${release_tag} already exists; skipped." >> "$GITHUB_STEP_SUMMARY"
+          else
+            should_build=true
+          fi
+
+          {
+            echo "dart_tag=$dart_tag"
+            echo "release_tag=$release_tag"
+            echo "should_build=$should_build"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build Loong64 archives under QEMU
+    needs: discover
+    if: ${{ needs.discover.outputs.should_build == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 720
+    steps:
+      - name: Checkout release scripts
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+
+      - name: Build in Loong64 container
+        env:
+          DART_TAG: ${{ needs.discover.outputs.dart_tag }}
+          RELEASE_TAG: ${{ needs.discover.outputs.release_tag }}
+          LOONG64_QEMU_IMAGE: ${{ vars.LOONG64_QEMU_IMAGE }}
+        run: |
+          set -euo pipefail
+          image="${LOONG64_QEMU_IMAGE:-ghcr.io/loong64/debian:trixie}"
+          release_id="${RELEASE_TAG#v}"
+
+          docker run --rm \
+            --platform linux/loong64 \
+            -e DART_TAG="$DART_TAG" \
+            -e RELEASE_ID="$release_id" \
+            -v "$PWD:/work/flutter-loong64-releases" \
+            -w /work/flutter-loong64-releases \
+            "$image" \
+            bash scripts/ci-qemu-loong64-release.sh
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.discover.outputs.release_tag }}
+          DART_TAG: ${{ needs.discover.outputs.dart_tag }}
+        run: |
+          set -euo pipefail
+          release_dir="dist/${RELEASE_TAG#v}"
+
+          gh release create "$RELEASE_TAG" \
+            "$release_dir"/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$RELEASE_TAG" \
+            --notes "Loong64 Flutter/Dart release built from upstream Dart SDK tag ${DART_TAG}."

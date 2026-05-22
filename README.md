@@ -8,7 +8,7 @@ The source branches used for these builds live in:
 
 - Flutter SDK: <https://github.com/Flutter-Dart-loong64/flutter>
 - Dart SDK: <https://github.com/Flutter-Dart-loong64/sdk>
-- Flutter Engine: <https://github.com/Flutter-Dart-loong64/engine>
+- Flutter Engine source: `engine/src` in the Flutter fork
 
 Only SDK, runtime, and engine artifacts are published here. Flutter applications are outside the scope of this release repository.
 
@@ -24,12 +24,13 @@ Only SDK, runtime, and engine artifacts are published here. Flutter applications
 
 Current published release:
 
-- Release tag: `v2026.05.20.1`
-- Flutter SDK version: `3.44.0-1.0.pre-616`
-- Flutter framework revision: `9b43981fc5d61f877795b4dad64d0cc67671753d`
-- Dart SDK version: `3.13.0-edge.ae9f14de38050f38180626ad07d8252ee2e968f5`
+- Release tag: `v3.45.0-1.0.pre-174`
+- Flutter SDK version: `3.45.0-1.0.pre-174`
+- Flutter framework revision: `d2285105069eeaaae77619ddf63627bf646dcbf4`
+- Dart SDK version: `3.13.0-127.0.dev`
 - DevTools version: `2.58.0`
-- Flutter Engine source revision: `a7a98649a2c80b8a9839795680853428ff6de311`
+- Flutter Engine source revision: `d2285105069eeaaae77619ddf63627bf646dcbf4`
+- Engine content hash: `6f13d76618c7235203458cb1b67b0dbb6fb15af9`
 - Engine artifact target: `linux_loong64`
 - Engine options: Linux GTK release build with `--enable-fontconfig`
 
@@ -46,12 +47,12 @@ export DOWNLOAD_DIR=/path/to/download-directory
 mkdir -p "$INSTALL_DIR" "$DOWNLOAD_DIR"
 cd "$DOWNLOAD_DIR"
 
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/flutter-sdk-linux-loong64-20260520.1-9b43981fc5d6-dartae9f14de3805-enginea7a98649a2c8-fontconfig.tar.xz
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/SHA256SUMS
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-174/flutter-sdk-linux-loong64-3.45.0-1.0.pre-174-d2285105069e.tar.xz
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-174/SHA256SUMS
 
 sha256sum -c SHA256SUMS
 
-tar -xf flutter-sdk-linux-loong64-20260520.1-9b43981fc5d6-dartae9f14de3805-enginea7a98649a2c8-fontconfig.tar.xz -C "$INSTALL_DIR"
+tar -xf flutter-sdk-linux-loong64-3.45.0-1.0.pre-174-d2285105069e.tar.xz -C "$INSTALL_DIR"
 ```
 
 Add Flutter to your shell environment. Put these exports in your shell profile if you want them to persist:
@@ -102,8 +103,8 @@ export DART_DOWNLOAD_DIR=/path/to/download-directory
 mkdir -p "$DART_INSTALL_DIR" "$DART_DOWNLOAD_DIR"
 cd "$DART_DOWNLOAD_DIR"
 
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/dart-sdk-linux-loong64-20260520.1-ae9f14de3805.tar.xz
-tar -xf dart-sdk-linux-loong64-20260520.1-ae9f14de3805.tar.xz -C "$DART_INSTALL_DIR"
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-174/dart-sdk-linux-loong64-3.45.0-1.0.pre-174-e650d226331b.tar.xz
+tar -xf dart-sdk-linux-loong64-3.45.0-1.0.pre-174-e650d226331b.tar.xz -C "$DART_INSTALL_DIR"
 
 export PATH="$DART_INSTALL_DIR/dart-sdk/bin:$PATH"
 
@@ -114,14 +115,14 @@ dart pub --help
 To verify the Dart SDK archive with the release checksums:
 
 ```bash
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v2026.05.20.1/SHA256SUMS
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-174/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
 The published release page is:
 
 ```text
-https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/tag/v2026.05.20.1
+https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/tag/v3.45.0-1.0.pre-174
 ```
 
 For temporary one-shell use without changing `.bashrc`:
@@ -170,18 +171,17 @@ Package names may vary slightly across UOS/deepin releases.
 
 ## Build From Source
 
-For the complete native source build flow, including Dart SDK, Flutter Engine, Flutter SDK cache layout, fontconfig, and release packaging, see [BUILDING.md](BUILDING.md).
+For the complete native source build flow, including Dart SDK, Flutter Engine, Flutter SDK cache layout, fontconfig, and release packaging, see [BUILDING.md](BUILDING.md). Published deployment records are kept in [releases/HISTORY.md](releases/HISTORY.md).
 
 Short version for a native LoongArch64 UOS/deepin host:
 
 ```bash
 export WORKSPACE=/path/to/loong64-flutter-workspace
-mkdir -p "$WORKSPACE/engine/src"
+mkdir -p "$WORKSPACE"
 cd "$WORKSPACE"
 
 git clone https://github.com/Flutter-Dart-loong64/sdk.git dart-sdk
 git clone https://github.com/Flutter-Dart-loong64/flutter.git flutter
-git clone https://github.com/Flutter-Dart-loong64/engine.git engine/src/flutter
 ```
 
 Build the Dart SDK:
@@ -194,7 +194,7 @@ cd dart-sdk
 Build the Linux GTK engine. Keep `--enable-fontconfig`; the published SDK uses fontconfig for system font fallback on LoongArch64 desktops.
 
 ```bash
-cd "$WORKSPACE/engine/src"
+cd "$WORKSPACE/flutter/engine/src"
 export VPYTHON_BYPASS="manually managed python not supported by chrome operations"
 dart_commit="$(git -C "$WORKSPACE/dart-sdk" rev-parse HEAD)"
 
@@ -229,6 +229,15 @@ Release assets use this naming scheme:
 - `SHA256SUMS`
 
 Each release should record source commits for Flutter SDK, Dart SDK, and Flutter Engine.
+
+## Automation
+
+This repository includes two GitHub Actions workflows:
+
+- `Sync Loong64 Forks` rebases the `sdk`, `engine`, `flutter`, and `native` fork branches onto their upstream branches. It only updates fork branches and never builds or publishes release archives. If a rebase conflicts, the workflow aborts that repository and leaves the fork unchanged.
+- `Dart Tag QEMU Loong64 Release` builds only from an upstream Dart SDK tag. It does not build from ordinary fork rebases or branch commits. The scheduled run polls the latest upstream Dart tag and skips if the matching GitHub Release already exists. The workflow applies only the Loong64 commits that exist on the fork branch ahead of upstream `main`; if those commits do not apply cleanly to the target tag, the release build is skipped. Set the repository variable `LOONG64_QEMU_IMAGE` if the default container image is not suitable. Publishing uses version-only Git tags such as `v3.13.0`; asset filenames keep the `loong64` architecture marker.
+
+The sync workflow needs a `SYNC_TOKEN` secret with write access to the fork repositories. Without that secret it exits without changing any repository.
 
 ## Status
 

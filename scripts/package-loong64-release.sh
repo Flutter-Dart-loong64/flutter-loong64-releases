@@ -17,6 +17,8 @@ flutter_root="$FLUTTER_ROOT"
 dart_root="$DART_ROOT"
 engine_src="$ENGINE_SRC"
 engine_out="${ENGINE_OUT:-$flutter_root/bin/cache/artifacts/engine/linux-loong64-release}"
+flutter_base="$(basename "$flutter_root")"
+flutter_archive_root="${FLUTTER_ARCHIVE_ROOT:-flutter}"
 
 mkdir -p "$output_dir"
 
@@ -43,19 +45,23 @@ tar -C "$engine_out" \
   "${engine_entries[@]}"
 
 tar -C "$(dirname "$flutter_root")" \
-  --exclude='flutter/.git' \
-  --exclude='flutter/.dart_tool' \
-  --exclude='flutter/**/.dart_tool' \
-  --exclude='flutter/bin/cache/pkg' \
-  --exclude='flutter/bin/cache/downloads' \
-  --exclude='flutter/bin/cache/dart-sdk.old' \
-  --exclude='flutter/bin/cache/artifacts/material_fonts' \
-  --exclude='flutter/bin/cache/artifacts/engine/linux-loong64-release/backup-before-*' \
-  --exclude='flutter/bin/cache/artifacts/engine/linux-loong64-release/gen_snapshot.15f-backup' \
-  --exclude='flutter/**/build' \
+  --exclude="$flutter_base/.git" \
+  --exclude="$flutter_base/.gclient" \
+  --exclude="$flutter_base/.gclient_entries" \
+  --exclude="$flutter_base/.dart_tool" \
+  --exclude="$flutter_base/**/.dart_tool" \
+  --exclude="$flutter_base/engine/src" \
+  --exclude="$flutter_base/third_party" \
+  --exclude="$flutter_base/bin/cache/downloads" \
+  --exclude="$flutter_base/bin/cache/dart-sdk.old" \
+  --exclude="$flutter_base/bin/cache/artifacts/material_fonts" \
+  --exclude="$flutter_base/bin/cache/artifacts/engine/linux-loong64-release/backup-before-*" \
+  --exclude="$flutter_base/bin/cache/artifacts/engine/linux-loong64-release/gen_snapshot.15f-backup" \
+  --exclude="$flutter_base/**/build" \
+  --transform="s#^$flutter_base#$flutter_archive_root#" \
   -I "$xz_cmd" \
   -cf "$output_dir/flutter-sdk-linux-loong64-${release_id}-${flutter_commit}.tar.xz" \
-  "$(basename "$flutter_root")"
+  "$flutter_base"
 
 (
   cd "$output_dir"

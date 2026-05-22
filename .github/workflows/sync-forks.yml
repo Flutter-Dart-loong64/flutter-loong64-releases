@@ -1,0 +1,95 @@
+name: Sync Loong64 Forks
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "Repository to sync: all, sdk, engine, flutter, or native"
+        default: "all"
+        required: false
+  schedule:
+    - cron: "37 18 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Sync ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: sdk
+            fork: Flutter-Dart-loong64/sdk
+            upstream: dart-lang/sdk
+            branch: main
+            upstream_branch: main
+          - name: engine
+            fork: Flutter-Dart-loong64/engine
+            upstream: flutter/engine
+            branch: main
+            upstream_branch: main
+          - name: flutter
+            fork: Flutter-Dart-loong64/flutter
+            upstream: flutter/flutter
+            branch: master
+            upstream_branch: master
+          - name: native
+            fork: Flutter-Dart-loong64/native
+            upstream: dart-lang/native
+            branch: main
+            upstream_branch: main
+
+    steps:
+      - name: Skip unselected repository
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.repository != 'all' && inputs.repository != matrix.name }}
+        run: |
+          echo "Skipping ${{ matrix.name }}; workflow input selected ${{ inputs.repository }}." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Rebase fork branch
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.repository == 'all' || inputs.repository == matrix.name }}
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+          FORK: ${{ matrix.fork }}
+          UPSTREAM: ${{ matrix.upstream }}
+          BRANCH: ${{ matrix.branch }}
+          UPSTREAM_BRANCH: ${{ matrix.upstream_branch }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${SYNC_TOKEN:-}" ]]; then
+            echo "SYNC_TOKEN is not configured; skipped ${FORK}." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          workdir="$(mktemp -d)"
+          trap 'rm -rf "$workdir"' EXIT
+
+          git config --global user.name "guanzi008"
+          git config --global user.email "245205080@qq.com"
+
+          git clone \
+            --branch "$BRANCH" \
+            "https://x-access-token:${SYNC_TOKEN}@github.com/${FORK}.git" \
+            "$workdir/repo"
+          cd "$workdir/repo"
+
+          git remote add upstream "https://github.com/${UPSTREAM}.git"
+          git fetch upstream "$UPSTREAM_BRANCH"
+
+          before="$(git rev-parse HEAD)"
+          if git rebase "upstream/${UPSTREAM_BRANCH}"; then
+            after="$(git rev-parse HEAD)"
+            if [[ "$before" == "$after" ]]; then
+              echo "${FORK} ${BRANCH} is already current." >> "$GITHUB_STEP_SUMMARY"
+            else
+              git push --force-with-lease origin "HEAD:${BRANCH}"
+              echo "${FORK} ${BRANCH} rebased to ${UPSTREAM}/${UPSTREAM_BRANCH}." >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            git rebase --abort || true
+            echo "${FORK} ${BRANCH} has rebase conflicts; skipped without changing the fork." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi

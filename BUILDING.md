@@ -27,18 +27,17 @@ Choose a workspace directory first. The examples below use `WORKSPACE` instead o
 
 ```bash
 export WORKSPACE=/path/to/loong64-flutter-workspace
-mkdir -p "$WORKSPACE/engine/src"
+mkdir -p "$WORKSPACE"
 cd "$WORKSPACE"
 
 git clone https://github.com/Flutter-Dart-loong64/sdk.git dart-sdk
 git clone https://github.com/Flutter-Dart-loong64/flutter.git flutter
-git clone https://github.com/Flutter-Dart-loong64/engine.git engine/src/flutter
 ```
 
-If the engine checkout does not already point at the patched Dart SDK, link it explicitly:
+The current Flutter fork carries the engine source in the Flutter monorepo under `flutter/engine/src`. After syncing engine dependencies, point that engine checkout at the patched Dart SDK:
 
 ```bash
-cd "$WORKSPACE/engine/src/flutter"
+cd "$WORKSPACE/flutter/engine/src/flutter"
 rm -rf third_party/dart
 ln -s "$WORKSPACE/dart-sdk" third_party/dart
 ```
@@ -90,7 +89,7 @@ Verify the Dart revision:
 Build the Linux release engine for Loong64. Keep `--enable-fontconfig`; it is required for normal system font fallback on UOS/deepin desktops.
 
 ```bash
-cd "$WORKSPACE/engine/src"
+cd "$WORKSPACE/flutter/engine/src"
 dart_commit="$(git -C "$WORKSPACE/dart-sdk" rev-parse HEAD)"
 
 ./flutter/tools/gn \
@@ -126,7 +125,7 @@ ldd out/linux_release_loong64_gtk/libflutter_linux_gtk.so | grep fontconfig
 The Flutter tool expects Linux release artifacts under `bin/cache/artifacts/engine/linux-loong64-release`.
 
 ```bash
-engine_out="$WORKSPACE/engine/src/out/linux_release_loong64_gtk"
+engine_out="$WORKSPACE/flutter/engine/src/out/linux_release_loong64_gtk"
 engine_cache="$WORKSPACE/flutter/bin/cache/artifacts/engine/linux-loong64-release"
 
 mkdir -p "$engine_cache"
@@ -142,7 +141,7 @@ The Linux embedder headers live in the engine source tree. Copy them if your cac
 
 ```bash
 if [ ! -d "$engine_cache/flutter_linux" ]; then
-  cp -a "$WORKSPACE/engine/src/flutter/shell/platform/linux/public/flutter_linux" \
+  cp -a "$WORKSPACE/flutter/engine/src/flutter/shell/platform/linux/public/flutter_linux" \
     "$engine_cache/flutter_linux"
 fi
 ```
@@ -186,7 +185,7 @@ cd "$WORKSPACE/flutter-loong64-releases"
 
 FLUTTER_ROOT="$WORKSPACE/flutter" \
 DART_ROOT="$WORKSPACE/dart-sdk" \
-ENGINE_SRC="$WORKSPACE/engine/src" \
+ENGINE_SRC="$WORKSPACE/flutter/engine/src" \
 ENGINE_OUT="$WORKSPACE/flutter/bin/cache/artifacts/engine/linux-loong64-release" \
 ./scripts/package-loong64-release.sh 20260521.1 "$WORKSPACE/releases/20260521.1"
 ```
@@ -199,7 +198,15 @@ sha256sum -c SHA256SUMS
 tar -tJf flutter-sdk-linux-loong64-*.tar.xz | grep 'linux-loong64-release/libflutter_linux_gtk.so'
 ```
 
-## 8. Common Failure Modes
+After publishing, add a deployment record to [releases/HISTORY.md](releases/HISTORY.md) with the release tag, source commits, build target, and asset names.
+
+## 8. Automation
+
+`Sync Loong64 Forks` rebases the Loong64 fork branches against upstream. It uses `SYNC_TOKEN`; if the token is absent or a rebase conflicts, the workflow skips without rewriting the fork branch.
+
+`Dart Tag QEMU Loong64 Release` builds only from an upstream Dart SDK tag. It does not build from ordinary fork rebases or branch commits. The scheduled run polls the latest upstream Dart tag and skips if the matching GitHub Release already exists. It discovers the Loong64 commits on the fork branch ahead of upstream `main`, applies only those commits to the selected Dart SDK tag, and skips the release if a patch conflicts. The default image can be overridden with the repository variable `LOONG64_QEMU_IMAGE`. Full Flutter and engine builds under QEMU can be slow; native LoongArch64 release builds remain the preferred path for production artifacts.
+
+## 9. Common Failure Modes
 
 - `gen_snapshot` reports `ApiError`: the Dart frontend and `gen_snapshot` are from different Dart commits. Rebuild or replace the engine artifacts so `gen_snapshot`, `libflutter_linux_gtk.so`, and the Flutter cache Dart SDK use the same Dart revision.
 - Chinese text renders as boxes: rebuild the engine with `--enable-fontconfig` and verify `ldd libflutter_linux_gtk.so | grep fontconfig`.
