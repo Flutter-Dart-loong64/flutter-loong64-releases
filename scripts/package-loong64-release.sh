@@ -45,7 +45,6 @@ tar -C "$engine_out" \
   "${engine_entries[@]}"
 
 tar -C "$(dirname "$flutter_root")" \
-  --exclude="$flutter_base/.git" \
   --exclude="$flutter_base/.gclient" \
   --exclude="$flutter_base/.gclient_entries" \
   --exclude="$flutter_base/.dart_tool" \
