@@ -4,11 +4,20 @@ This repository publishes experimental LoongArch64/Loong64 builds of the Flutter
 
 Chinese documentation is available in [README.zh-CN.md](README.zh-CN.md).
 
-The source branches used for these builds live in:
+The Loong64 port is split across four source forks:
 
-- Flutter SDK: <https://github.com/Flutter-Dart-loong64/flutter>
-- Dart SDK: <https://github.com/Flutter-Dart-loong64/sdk>
-- Flutter Engine source: `engine/src` in the Flutter fork
+| Repository | Upstream | Role |
+| --- | --- | --- |
+| [`flutter`](https://github.com/Flutter-Dart-loong64/flutter) | `flutter/flutter` | Flutter framework and tool fork. It carries Linux `loong64` target selection, host detection, cache/artifact naming, native asset integration, and the SDK packaging root. Current release builds take the engine checkout from `engine/src` inside this fork so the engine source matches Flutter `DEPS`. |
+| [`sdk`](https://github.com/Flutter-Dart-loong64/sdk) | `dart-lang/sdk` | Dart SDK and VM fork. It provides the native Loong64 Dart VM backend, assembler/disassembler, JIT/AOT code generation, runtime entries, snapshot tools, and the `dart`/`gen_snapshot` binaries used by Flutter and the engine. |
+| [`engine`](https://github.com/Flutter-Dart-loong64/engine) | `flutter/engine` | Standalone Flutter Engine fork for engine-only Loong64 patches and review. It is kept in sync with upstream engine, but current Flutter SDK release builds prefer the `flutter` fork's `engine/src` checkout to keep framework, engine, and `DEPS` revisions aligned. |
+| [`native`](https://github.com/Flutter-Dart-loong64/native) | `dart-lang/native` | Dart native assets and FFI tooling fork. It tracks Loong64 target naming and native asset bundling support used by the Dart and Flutter toolchains. It is not published as a runtime archive here, but it is synced with the other forks so native assets stay aligned. |
+
+Build dependency flow:
+
+```text
+native target metadata -> sdk native assets / VM support -> engine Loong64 artifacts -> flutter SDK cache -> release archives
+```
 
 Only SDK, runtime, and engine artifacts are published here. Flutter applications are outside the scope of this release repository.
 

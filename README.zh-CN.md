@@ -2,11 +2,20 @@
 
 本仓库发布面向 LoongArch64/Loong64 Linux 桌面开发的实验性 Flutter SDK、Dart SDK 和 Flutter Engine 构建产物。
 
-源码仓库：
+Loong64 适配拆在四个源码 fork 中维护：
 
-- Flutter SDK：<https://github.com/Flutter-Dart-loong64/flutter>
-- Dart SDK：<https://github.com/Flutter-Dart-loong64/sdk>
-- Flutter Engine 源码：Flutter fork 中的 `engine/src`
+| 仓库 | 上游 | 职责 |
+| --- | --- | --- |
+| [`flutter`](https://github.com/Flutter-Dart-loong64/flutter) | `flutter/flutter` | Flutter framework 和 tool fork。这里维护 Linux `loong64` 目标选择、主机架构识别、cache/artifact 命名、native assets 集成，以及 Flutter SDK 发布包根目录。当前发布构建使用该 fork 内部的 `engine/src`，保证 framework、engine 和 Flutter `DEPS` revision 对齐。 |
+| [`sdk`](https://github.com/Flutter-Dart-loong64/sdk) | `dart-lang/sdk` | Dart SDK 和 VM fork。这里维护 Loong64 Dart VM backend、assembler/disassembler、JIT/AOT codegen、runtime entry、snapshot 工具，以及 Flutter/engine 使用的 `dart`、`gen_snapshot` 二进制。 |
+| [`engine`](https://github.com/Flutter-Dart-loong64/engine) | `flutter/engine` | 独立 Flutter Engine fork，用来维护和审查 engine-only 的 Loong64 补丁，并跟随上游 engine 同步。当前 Flutter SDK 发布构建优先使用 `flutter` fork 内的 `engine/src`，避免 framework、engine、`DEPS` revision 错位。 |
+| [`native`](https://github.com/Flutter-Dart-loong64/native) | `dart-lang/native` | Dart native assets 和 FFI tooling fork。这里跟踪 Loong64 target 命名和 native asset bundling 支持，供 Dart/Flutter 工具链使用。本仓库不单独发布它的运行时包，但会和其他 fork 一起同步，避免 native assets 支持脱节。 |
+
+构建依赖流向：
+
+```text
+native target metadata -> sdk native assets / VM support -> engine Loong64 artifacts -> flutter SDK cache -> release archives
+```
 
 本仓库只发布 SDK、runtime 和 engine artifacts，不发布具体 Flutter 应用。
 

@@ -4,6 +4,23 @@ This document describes the native LoongArch64/Loong64 build flow used for the r
 
 The expected build host is a native LoongArch64 UOS 25 or deepin 25 system. Cross-building the Linux desktop engine from x86_64 is not covered here.
 
+## Source Repository Roles
+
+The Loong64 source work is split across four forks under `Flutter-Dart-loong64`:
+
+| Repository | Upstream | Build role |
+| --- | --- | --- |
+| [`flutter`](https://github.com/Flutter-Dart-loong64/flutter) | `flutter/flutter` | Main Flutter SDK checkout and release archive root. It contains Flutter tool changes for `linux-loong64`, host detection, cache artifact names, native asset integration, and the current `engine/src` checkout used by this build flow. |
+| [`sdk`](https://github.com/Flutter-Dart-loong64/sdk) | `dart-lang/sdk` | Dart SDK and VM checkout. Build this first; its Loong64 `dart`, `gen_snapshot`, runtime, JIT/AOT backend, and snapshots must match the engine build revision. |
+| [`engine`](https://github.com/Flutter-Dart-loong64/engine) | `flutter/engine` | Standalone engine fork for engine-only Loong64 patch management. This build document uses `flutter/engine/src` from the Flutter fork for current releases, because that checkout follows the Flutter framework `DEPS` revision. |
+| [`native`](https://github.com/Flutter-Dart-loong64/native) | `dart-lang/native` | Native assets and FFI tooling fork. It keeps Loong64 target metadata and native asset bundling support aligned with the Dart and Flutter toolchains. |
+
+The effective build order is:
+
+```text
+native target metadata -> Dart SDK / VM -> Flutter Engine -> Flutter SDK cache -> release archives
+```
+
 ## 1. Install Packages
 
 Install the normal Flutter Linux desktop dependencies plus LoongArch64 build tools:
