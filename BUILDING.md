@@ -204,13 +204,13 @@ FLUTTER_ROOT="$WORKSPACE/flutter" \
 DART_ROOT="$WORKSPACE/dart-sdk" \
 ENGINE_SRC="$WORKSPACE/flutter/engine/src" \
 ENGINE_OUT="$WORKSPACE/flutter/bin/cache/artifacts/engine/linux-loong64-release" \
-./scripts/package-loong64-release.sh 20260521.1 "$WORKSPACE/releases/20260521.1"
+./scripts/package-loong64-release.sh 3.45.0-1.0.pre-198 "$WORKSPACE/releases/3.45.0-1.0.pre-198"
 ```
 
 Verify the archives:
 
 ```bash
-cd "$WORKSPACE/releases/20260521.1"
+cd "$WORKSPACE/releases/3.45.0-1.0.pre-198"
 sha256sum -c SHA256SUMS
 tar -tJf flutter-sdk-linux-loong64-*.tar.xz | grep 'linux-loong64-release/libflutter_linux_gtk.so'
 ```

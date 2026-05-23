@@ -2,6 +2,28 @@
 
 This file records the deployment source information for published Loong64 Flutter releases. Binary archives are attached to GitHub Releases; they are not stored in git.
 
+## v3.45.0-1.0.pre-198
+
+- Release date: 2026-05-24
+- Flutter SDK version: `3.45.0-1.0.pre-198`
+- Flutter framework revision: `0fed394754392b30db4cbce30170eb91675dc923`
+- Dart SDK version: `3.13.0-edge.814677061617134b666f6b5e3bcc42476911014b`
+- Dart SDK revision: `814677061617134b666f6b5e3bcc42476911014b`
+- Flutter Engine source revision: `0fed394754392b30db4cbce30170eb91675dc923`
+- Engine content hash: `a70565e489b0c46279f748952c761e394cea3566`
+- Engine target: `linux_release_loong64_gtk`
+- Engine options: Linux GTK debug/profile/release with `--enable-fontconfig`
+- Validation:
+  - `flutter doctor -v` detects `linux-loong64` on UOS 25; Android SDK and Chrome are not installed on the build host.
+  - Loong64 debug, profile, and release engine archive targets rebuild successfully after aligning `dart:ui` with the Flutter framework.
+  - A newly created Flutter Linux app builds with `flutter build linux --release --target-platform linux-loong64`.
+  - The smoke app executable and bundled `libflutter_linux_gtk.so` are LoongArch ELF files.
+  - The bundled `libflutter_linux_gtk.so` links to `libfontconfig.so.1`.
+- Assets:
+  - `dart-sdk-linux-loong64-3.45.0-1.0.pre-198-814677061617.tar.xz`
+  - `flutter-engine-linux-loong64-gtk-3.45.0-1.0.pre-198-0fed39475439.tar.xz`
+  - `flutter-sdk-linux-loong64-3.45.0-1.0.pre-198-0fed39475439.tar.xz`
+
 ## v3.45.0-1.0.pre-174
 
 - Release date: 2026-05-22

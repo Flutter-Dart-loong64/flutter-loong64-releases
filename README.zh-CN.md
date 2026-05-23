@@ -31,15 +31,16 @@ native target metadata -> sdk native assets / VM support -> engine Loong64 artif
 
 当前发布版本：
 
-- Release tag：`v3.45.0-1.0.pre-174`
-- Flutter SDK 版本：`3.45.0-1.0.pre-174`
-- Flutter framework revision：`d2285105069eeaaae77619ddf63627bf646dcbf4`
-- Dart SDK 版本：`3.13.0-127.0.dev`
+- Release tag：`v3.45.0-1.0.pre-198`
+- Flutter SDK 版本：`3.45.0-1.0.pre-198`
+- Flutter framework revision：`0fed394754392b30db4cbce30170eb91675dc923`
+- Dart SDK 版本：`3.13.0-edge.814677061617134b666f6b5e3bcc42476911014b`
+- Dart SDK revision：`814677061617134b666f6b5e3bcc42476911014b`
 - DevTools 版本：`2.58.0`
-- Flutter Engine 源码 revision：`d2285105069eeaaae77619ddf63627bf646dcbf4`
-- Engine content hash：`6f13d76618c7235203458cb1b67b0dbb6fb15af9`
+- Flutter Engine 源码 revision：`0fed394754392b30db4cbce30170eb91675dc923`
+- Engine content hash：`a70565e489b0c46279f748952c761e394cea3566`
 - Engine artifact 目标：`linux_loong64`
-- Engine 构建选项：Linux GTK release，启用 `--enable-fontconfig`
+- Engine 构建选项：Linux GTK debug/profile/release，启用 `--enable-fontconfig`
 
 Release tag 是发布包版本号；Flutter SDK 版本以 `flutter --version` 输出的 framework 版本为准。
 
@@ -54,12 +55,12 @@ export DOWNLOAD_DIR=/path/to/download-directory
 mkdir -p "$INSTALL_DIR" "$DOWNLOAD_DIR"
 cd "$DOWNLOAD_DIR"
 
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-174/flutter-sdk-linux-loong64-3.45.0-1.0.pre-174-d2285105069e.tar.xz
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-174/SHA256SUMS
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-198/flutter-sdk-linux-loong64-3.45.0-1.0.pre-198-0fed39475439.tar.xz
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-198/SHA256SUMS
 
 sha256sum -c SHA256SUMS
 
-tar -xf flutter-sdk-linux-loong64-3.45.0-1.0.pre-174-d2285105069e.tar.xz -C "$INSTALL_DIR"
+tar -xf flutter-sdk-linux-loong64-3.45.0-1.0.pre-198-0fed39475439.tar.xz -C "$INSTALL_DIR"
 ```
 
 配置环境变量：
@@ -110,8 +111,8 @@ export DART_DOWNLOAD_DIR=/path/to/download-directory
 mkdir -p "$DART_INSTALL_DIR" "$DART_DOWNLOAD_DIR"
 cd "$DART_DOWNLOAD_DIR"
 
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-174/dart-sdk-linux-loong64-3.45.0-1.0.pre-174-e650d226331b.tar.xz
-tar -xf dart-sdk-linux-loong64-3.45.0-1.0.pre-174-e650d226331b.tar.xz -C "$DART_INSTALL_DIR"
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-198/dart-sdk-linux-loong64-3.45.0-1.0.pre-198-814677061617.tar.xz
+tar -xf dart-sdk-linux-loong64-3.45.0-1.0.pre-198-814677061617.tar.xz -C "$DART_INSTALL_DIR"
 
 export PATH="$DART_INSTALL_DIR/dart-sdk/bin:$PATH"
 
@@ -122,7 +123,7 @@ dart pub --help
 校验 Dart SDK：
 
 ```bash
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-174/SHA256SUMS
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-198/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
@@ -225,13 +226,13 @@ ldd "$engine_cache/libflutter_linux_gtk.so" | grep fontconfig
 
 Git tag 使用纯版本号，不把架构写进 tag，例如：
 
-- `v2026.05.20.1`
+- `v3.45.0-1.0.pre-198`
 
 资产文件名保留架构信息：
 
-- `dart-sdk-linux-loong64-YYYYMMDD.N-<dart-commit>.tar.xz`
-- `flutter-engine-linux-loong64-gtk-YYYYMMDD.N-<engine-commit>-dart<dart-commit>-fontconfig.tar.xz`
-- `flutter-sdk-linux-loong64-YYYYMMDD.N-<flutter-commit>-dart<dart-commit>-engine<engine-commit>-fontconfig.tar.xz`
+- `dart-sdk-linux-loong64-<flutter-version>-<dart-commit>.tar.xz`
+- `flutter-engine-linux-loong64-gtk-<flutter-version>-<engine-commit>.tar.xz`
+- `flutter-sdk-linux-loong64-<flutter-version>-<flutter-commit>.tar.xz`
 - `SHA256SUMS`
 
 ## 自动化
