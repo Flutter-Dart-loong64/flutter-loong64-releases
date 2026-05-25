@@ -243,6 +243,7 @@ mkdir -p "$cache_dir" "$flutter_root/bin/internal"
 printf '%s\n' "$engine_revision" > "$cache_dir/engine.stamp"
 printf '\n' > "$cache_dir/engine.realm"
 printf '%s\n' "$engine_revision" > "$cache_dir/engine-dart-sdk.stamp"
+printf '%s\n' "$engine_revision" > "$cache_dir/flutter_sdk.stamp"
 printf '%s\n' "$engine_revision" > "$cache_dir/engine_stamp.stamp"
 python3 - "$cache_dir/engine_stamp.json" "$engine_revision" "$engine_revision_date" <<'PY'
 import json
@@ -261,6 +262,11 @@ stamp = {
 }
 path.write_text(json.dumps(stamp, separators=(",", ":")) + "\n")
 PY
+
+mkdir -p "$cache_dir/pkg"
+rm -rf "$cache_dir/pkg/sky_engine" "$cache_dir/pkg/flutter_gpu"
+cp -a "$engine_src/flutter/sky/packages/sky_engine" "$cache_dir/pkg/sky_engine"
+cp -a "$engine_src/flutter/lib/gpu" "$cache_dir/pkg/flutter_gpu"
 
 cat > "$flutter_root/bin/internal/bootstrap.sh" <<EOF
 #!/usr/bin/env bash
