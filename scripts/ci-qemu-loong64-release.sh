@@ -3,6 +3,7 @@ set -euo pipefail
 
 : "${DART_TAG:?Set DART_TAG to an upstream dart-lang/sdk tag.}"
 : "${RELEASE_ID:?Set RELEASE_ID to the release archive version.}"
+: "${BOOTSTRAP_DART_SDK_URL:?Set BOOTSTRAP_DART_SDK_URL to a Loong64 Dart SDK archive URL.}"
 
 export DEBIAN_FRONTEND=noninteractive
 workspace="${WORKSPACE:-/work/loong64-build}"
@@ -14,15 +15,28 @@ flutter_root="$workspace/flutter"
 apt-get update
 apt-get install -y --no-install-recommends \
   ca-certificates curl git python3 python3-pip xz-utils unzip zip \
-  build-essential clang cmake ninja-build pkg-config \
+  python3-httplib2 python3-six \
+  build-essential clang cmake generate-ninja ninja-build pkg-config \
   libgtk-3-dev liblzma-dev libfontconfig1-dev \
   libgl1-mesa-dev libegl1-mesa-dev \
   libx11-dev libxcursor-dev libxinerama-dev libxi-dev libxrandr-dev libxxf86vm-dev
 
 apt-get install -y --no-install-recommends clang-19 llvm-19 lld-19 >/dev/null 2>&1 || true
 
+system_gn="$(command -v gn || true)"
+system_ninja="$(command -v ninja || true)"
+if [[ -z "$system_gn" || -z "$system_ninja" ]]; then
+  echo "Debian Loong64 build tools are incomplete; gn and ninja are required." >&2
+  echo "gn: ${system_gn:-missing}" >&2
+  echo "ninja: ${system_ninja:-missing}" >&2
+  exit 1
+fi
+
 mkdir -p "$workspace" "$dart_workspace" "$output_dir"
 cd "$workspace"
+
+git config --global user.name "${GIT_COMMITTER_NAME:-guanzi008}"
+git config --global user.email "${GIT_COMMITTER_EMAIL:-245205080@qq.com}"
 
 if [[ ! -d tools/depot_tools ]]; then
   git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git tools/depot_tools
@@ -30,6 +44,7 @@ fi
 
 export PATH="$workspace/tools/depot_tools:$PATH"
 export VPYTHON_BYPASS="manually managed python not supported by chrome operations"
+gclient=(python3 "$workspace/tools/depot_tools/gclient.py")
 
 if command -v clang++-19 >/dev/null 2>&1; then
   mkdir -p "$workspace/tools/clang-bin"
@@ -50,16 +65,34 @@ fi
 
 cd "$dart_workspace"
 if [[ ! -f .gclient ]]; then
-  gclient config --name=dart-sdk https://github.com/Flutter-Dart-loong64/sdk.git
+  "${gclient[@]}" config --name=sdk https://github.com/Flutter-Dart-loong64/sdk.git
 fi
-gclient sync -D --no-history
+"${gclient[@]}" sync -D --no-history --nohooks --ignore-dep-type=cipd
 
-dart_root="$dart_workspace/dart-sdk"
+dart_root="$dart_workspace/sdk"
 cd "$dart_root"
-git fetch origin main
+git fetch --no-tags origin main
 git remote get-url upstream >/dev/null 2>&1 || git remote add upstream https://github.com/dart-lang/sdk.git
-git fetch upstream main
-git fetch upstream "refs/tags/$DART_TAG:refs/tags/$DART_TAG"
+git fetch --no-tags upstream main
+git fetch --no-tags --depth=1 upstream "refs/tags/$DART_TAG:refs/tags/$DART_TAG"
+
+if [[ "$(git rev-parse --is-shallow-repository)" == "true" ]]; then
+  for deepen_by in 8 64 512; do
+    if git merge-base upstream/main origin/main >/dev/null 2>&1; then
+      break
+    fi
+    git fetch --no-tags --deepen="$deepen_by" origin main
+  done
+
+  if ! git merge-base upstream/main origin/main >/dev/null 2>&1; then
+    git fetch --no-tags --unshallow origin main
+  fi
+fi
+
+if ! git merge-base upstream/main origin/main >/dev/null 2>&1; then
+  echo "Unable to find a merge base between upstream/main and the Loong64 fork main branch." >&2
+  exit 1
+fi
 
 mapfile -t loong64_commits < <(
   git rev-list --reverse --cherry-pick --right-only upstream/main...origin/main
@@ -84,6 +117,20 @@ if [[ "$(git rev-list --count "$DART_TAG"..HEAD)" -ne "${#loong64_commits[@]}" ]
   echo "Unexpected Dart SDK release commit count after applying Loong64 patches." >&2
   exit 1
 fi
+
+rm -rf tools/sdks/dart-sdk
+mkdir -p tools/sdks
+curl -L --fail --retry 3 "$BOOTSTRAP_DART_SDK_URL" -o "$workspace/bootstrap-dart-sdk.tar.xz"
+tar -xJf "$workspace/bootstrap-dart-sdk.tar.xz" -C tools/sdks
+if [[ ! -x tools/sdks/dart-sdk/bin/dart ]]; then
+  echo "The Loong64 Dart SDK bootstrap archive did not provide tools/sdks/dart-sdk/bin/dart." >&2
+  exit 1
+fi
+python3 tools/generate_package_config.py
+
+mkdir -p buildtools/ninja
+ln -sfn "$system_gn" buildtools/gn
+ln -sfn "$system_ninja" buildtools/ninja/ninja
 
 ./tools/build.py -m release -a loong64 --no-rbe create_sdk dartaotruntime gen_snapshot analyze_snapshot
 
@@ -134,7 +181,7 @@ lines += [
 Path(".gclient").write_text("\n".join(lines))
 PY
 
-gclient sync -D --no-history --nohooks --ignore-dep-type=cipd -j4
+"${gclient[@]}" sync -D --no-history --nohooks --ignore-dep-type=cipd -j4
 
 engine_src="$flutter_root/engine/src"
 
@@ -147,8 +194,8 @@ rm -rf flutter/third_party/dart flutter/prebuilts/linux-loong64
 mkdir -p flutter/prebuilts/linux-loong64 flutter/third_party/gn "$flutter_root/third_party/ninja"
 ln -s "$dart_root" flutter/third_party/dart
 ln -s "$dart_root/out/ReleaseLOONG64/dart-sdk" flutter/prebuilts/linux-loong64/dart-sdk
-ln -sfn "$(command -v gn)" flutter/third_party/gn/gn
-ln -sfn "$(command -v ninja)" "$flutter_root/third_party/ninja/ninja"
+ln -sfn "$system_gn" flutter/third_party/gn/gn
+ln -sfn "$system_ninja" "$flutter_root/third_party/ninja/ninja"
 dart_commit="$(git -C "$dart_root" rev-parse HEAD)"
 
 if [[ -f flutter/third_party/vulkan-deps/glslang/src/BUILD.gn ]]; then
@@ -176,7 +223,7 @@ fi
 
 (
   cd flutter
-  "$dart_root/out/ReleaseLOONG64/dart-sdk/bin/dart" pub get --offline
+  "$dart_root/out/ReleaseLOONG64/dart-sdk/bin/dart" pub get
 )
 
 ./flutter/tools/gn \

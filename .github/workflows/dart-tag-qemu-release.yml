@@ -1,11 +1,22 @@
-name: Dart Tag QEMU Loong64 Release
+name: Flutter QEMU Loong64 Release
 
 on:
   workflow_dispatch:
     inputs:
-      dart_tag:
-        description: "Upstream dart-lang/sdk tag to build. Empty means latest upstream version tag."
+      flutter_version:
+        description: "Flutter SDK release version. Empty means latest upstream flutter/flutter version tag."
         required: false
+      dart_tag:
+        description: "Upstream dart-lang/sdk tag used as the Dart SDK patch base. Empty means latest upstream Dart tag."
+        required: false
+      bootstrap_release_tag:
+        description: "Existing release tag that provides a Loong64 Dart SDK bootstrap. Empty means latest release with a Dart SDK asset."
+        required: false
+      force_rebuild:
+        description: "Rebuild and replace assets even when the release already has complete Loong64 archives."
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "11 20 * * *"
 
@@ -18,15 +29,64 @@ jobs:
     outputs:
       dart_tag: ${{ steps.tags.outputs.dart_tag }}
       release_tag: ${{ steps.tags.outputs.release_tag }}
+      bootstrap_dart_url: ${{ steps.tags.outputs.bootstrap_dart_url }}
       should_build: ${{ steps.tags.outputs.should_build }}
     steps:
-      - name: Resolve Dart SDK tag
+      - name: Resolve release inputs
         id: tags
         env:
           GH_TOKEN: ${{ github.token }}
+          INPUT_FLUTTER_VERSION: ${{ inputs.flutter_version }}
           INPUT_DART_TAG: ${{ inputs.dart_tag }}
+          INPUT_BOOTSTRAP_RELEASE_TAG: ${{ inputs.bootstrap_release_tag }}
+          INPUT_FORCE_REBUILD: ${{ inputs.force_rebuild }}
         run: |
           set -euo pipefail
+
+          flutter_version="${INPUT_FLUTTER_VERSION:-}"
+          if [[ -z "$flutter_version" ]]; then
+            flutter_checkout="$(mktemp -d)"
+            git -C "$flutter_checkout" init -q
+            git -C "$flutter_checkout" remote add origin https://github.com/Flutter-Dart-loong64/flutter.git
+            git -C "$flutter_checkout" fetch -q --no-tags --depth=512 origin master
+            git -C "$flutter_checkout" checkout -q --detach FETCH_HEAD
+            git -C "$flutter_checkout" fetch -q --force https://github.com/flutter/flutter.git '+refs/tags/*:refs/tags/*'
+
+            latest_flutter_tag="$(
+              git -C "$flutter_checkout" for-each-ref \
+                --sort=-v:refname \
+                --count=1 \
+                --format='%(refname:short)' \
+                'refs/tags/[0-9]*.*.*'
+            )"
+
+            if [[ -z "$latest_flutter_tag" ]]; then
+              echo "No upstream Flutter SDK tag was found." >&2
+              exit 1
+            fi
+
+            if ! ancestor_ref="$(git -C "$flutter_checkout" merge-base HEAD "$latest_flutter_tag")"; then
+              git -C "$flutter_checkout" fetch -q --no-tags --unshallow origin master
+              ancestor_ref="$(git -C "$flutter_checkout" merge-base HEAD "$latest_flutter_tag")"
+            fi
+
+            commit_count="$(git -C "$flutter_checkout" rev-list --count "$ancestor_ref"..HEAD)"
+            if [[ "$commit_count" == "0" ]]; then
+              flutter_version="$latest_flutter_tag"
+            elif [[ "$latest_flutter_tag" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)-([0-9]+)\.([0-9]+)\.pre$ ]]; then
+              flutter_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.0-$((${BASH_REMATCH[4]} + 1)).0.pre-${commit_count}"
+            elif [[ "$latest_flutter_tag" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              flutter_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$((${BASH_REMATCH[3]} + 1))-0.0.pre-${commit_count}"
+            else
+              echo "Unsupported Flutter SDK tag format: $latest_flutter_tag" >&2
+              exit 1
+            fi
+          fi
+
+          if [[ -z "$flutter_version" ]]; then
+            echo "No upstream Flutter SDK tag was found." >&2
+            exit 1
+          fi
 
           dart_tag="${INPUT_DART_TAG:-}"
           if [[ -z "$dart_tag" ]]; then
@@ -50,11 +110,75 @@ jobs:
             exit 1
           fi
 
-          release_tag="v${dart_tag#v}"
+          release_tag="v${flutter_version#v}"
+          release_id="${release_tag#v}"
+          force_rebuild="${INPUT_FORCE_REBUILD:-false}"
 
-          if gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            should_build=false
-            echo "Release ${release_tag} already exists; skipped." >> "$GITHUB_STEP_SUMMARY"
+          bootstrap_dart_url=""
+          if [[ -n "${INPUT_BOOTSTRAP_RELEASE_TAG:-}" ]]; then
+            bootstrap_dart_url="$(
+              gh release view "${INPUT_BOOTSTRAP_RELEASE_TAG}" \
+                --repo "$GITHUB_REPOSITORY" \
+                --json assets \
+                --jq '[.assets[] | select(.name | test("^dart-sdk-linux-loong64-.*\\.tar\\.xz$")) | .url][0] // ""'
+            )"
+          else
+            while IFS= read -r existing_release_tag; do
+              bootstrap_dart_url="$(
+                gh release view "$existing_release_tag" \
+                  --repo "$GITHUB_REPOSITORY" \
+                  --json assets \
+                  --jq '[.assets[] | select(.name | test("^dart-sdk-linux-loong64-.*\\.tar\\.xz$")) | .url][0] // ""' 2>/dev/null || true
+              )"
+              if [[ -n "$bootstrap_dart_url" ]]; then
+                break
+              fi
+            done < <(gh release list --repo "$GITHUB_REPOSITORY" --limit 20 --json tagName --jq '.[].tagName')
+          fi
+
+          if [[ -z "$bootstrap_dart_url" ]]; then
+            echo "No existing Loong64 Dart SDK release asset was found for bootstrapping." >&2
+            exit 1
+          fi
+
+          if release_assets="$(
+            gh release view "$release_tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --json assets \
+              --jq '.assets[].name' 2>/dev/null
+          )"; then
+            has_dart=false
+            has_engine=false
+            has_flutter=false
+            has_sums=false
+            while IFS= read -r asset; do
+              case "$asset" in
+                dart-sdk-linux-loong64-"$release_id"-*.tar.xz)
+                  has_dart=true
+                  ;;
+                flutter-engine-linux-loong64-gtk-"$release_id"-*.tar.xz)
+                  has_engine=true
+                  ;;
+                flutter-sdk-linux-loong64-"$release_id"-*.tar.xz)
+                  has_flutter=true
+                  ;;
+                SHA256SUMS)
+                  has_sums=true
+                  ;;
+              esac
+            done <<< "$release_assets"
+
+            if [[ "$has_dart" == true && "$has_engine" == true && "$has_flutter" == true && "$has_sums" == true && "$force_rebuild" != true ]]; then
+              should_build=false
+              echo "Release ${release_tag} already has complete Loong64 assets; skipped." >> "$GITHUB_STEP_SUMMARY"
+            else
+              should_build=true
+              if [[ "$force_rebuild" == true ]]; then
+                echo "Release ${release_tag} exists and force_rebuild is enabled; rebuilding." >> "$GITHUB_STEP_SUMMARY"
+              else
+                echo "Release ${release_tag} exists but Loong64 assets are incomplete; rebuilding." >> "$GITHUB_STEP_SUMMARY"
+              fi
+            fi
           else
             should_build=true
           fi
@@ -62,6 +186,7 @@ jobs:
           {
             echo "dart_tag=$dart_tag"
             echo "release_tag=$release_tag"
+            echo "bootstrap_dart_url=$bootstrap_dart_url"
             echo "should_build=$should_build"
           } >> "$GITHUB_OUTPUT"
 
@@ -84,6 +209,7 @@ jobs:
         env:
           DART_TAG: ${{ needs.discover.outputs.dart_tag }}
           RELEASE_TAG: ${{ needs.discover.outputs.release_tag }}
+          BOOTSTRAP_DART_SDK_URL: ${{ needs.discover.outputs.bootstrap_dart_url }}
           LOONG64_QEMU_IMAGE: ${{ vars.LOONG64_QEMU_IMAGE }}
         run: |
           set -euo pipefail
@@ -94,6 +220,7 @@ jobs:
             --platform linux/loong64 \
             -e DART_TAG="$DART_TAG" \
             -e RELEASE_ID="$release_id" \
+            -e BOOTSTRAP_DART_SDK_URL="$BOOTSTRAP_DART_SDK_URL" \
             -v "$PWD:/work/flutter-loong64-releases" \
             -w /work/flutter-loong64-releases \
             "$image" \
@@ -107,9 +234,54 @@ jobs:
         run: |
           set -euo pipefail
           release_dir="dist/${RELEASE_TAG#v}"
+          if ! compgen -G "$release_dir/*.tar.xz" > /dev/null || [[ ! -f "$release_dir/SHA256SUMS" ]]; then
+            echo "No Loong64 release archives were produced; skipping publish." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
-          gh release create "$RELEASE_TAG" \
-            "$release_dir"/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "$RELEASE_TAG" \
-            --notes "Loong64 Flutter/Dart release built from upstream Dart SDK tag ${DART_TAG}."
+          release_notes="Loong64 Flutter SDK release ${RELEASE_TAG#v}, built with Dart SDK patches on upstream Dart SDK tag ${DART_TAG}."
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$RELEASE_TAG" \
+              --notes "$release_notes"
+            while IFS= read -r asset; do
+              case "$asset" in
+                dart-sdk-linux-loong64-"${RELEASE_TAG#v}"-*.tar.xz)
+                  gh release delete-asset "$RELEASE_TAG" "$asset" \
+                    --repo "$GITHUB_REPOSITORY" \
+                    --yes
+                  ;;
+                flutter-engine-linux-loong64-gtk-"${RELEASE_TAG#v}"-*.tar.xz)
+                  gh release delete-asset "$RELEASE_TAG" "$asset" \
+                    --repo "$GITHUB_REPOSITORY" \
+                    --yes
+                  ;;
+                flutter-sdk-linux-loong64-"${RELEASE_TAG#v}"-*.tar.xz)
+                  gh release delete-asset "$RELEASE_TAG" "$asset" \
+                    --repo "$GITHUB_REPOSITORY" \
+                    --yes
+                  ;;
+                SHA256SUMS)
+                  gh release delete-asset "$RELEASE_TAG" "$asset" \
+                    --repo "$GITHUB_REPOSITORY" \
+                    --yes
+                  ;;
+              esac
+            done < <(
+              gh release view "$RELEASE_TAG" \
+                --repo "$GITHUB_REPOSITORY" \
+                --json assets \
+                --jq '.assets[].name'
+            )
+            gh release upload "$RELEASE_TAG" \
+              "$release_dir"/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              "$release_dir"/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$RELEASE_TAG" \
+              --notes "$release_notes"
+          fi
