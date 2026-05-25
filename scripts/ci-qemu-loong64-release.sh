@@ -244,6 +244,8 @@ printf '%s\n' "$engine_revision" > "$cache_dir/engine.stamp"
 printf '\n' > "$cache_dir/engine.realm"
 printf '%s\n' "$engine_revision" > "$cache_dir/engine-dart-sdk.stamp"
 printf '%s\n' "$engine_revision" > "$cache_dir/flutter_sdk.stamp"
+printf '%s\n' "$engine_revision" > "$cache_dir/linux-sdk.stamp"
+printf '%s\n' "$engine_revision" > "$cache_dir/font-subset.stamp"
 printf '%s\n' "$engine_revision" > "$cache_dir/engine_stamp.stamp"
 python3 - "$cache_dir/engine_stamp.json" "$engine_revision" "$engine_revision_date" <<'PY'
 import json
