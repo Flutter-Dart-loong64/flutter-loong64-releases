@@ -235,6 +235,39 @@ for mode in debug profile; do
   cp -a "$engine_cache/flutter_linux" "$mode_cache/" 2>/dev/null || true
 done
 
+engine_revision="$(git -C "$engine_src/flutter" rev-parse HEAD)"
+engine_revision_date="$(git -C "$engine_src/flutter" show -s --format=%cI HEAD)"
+cache_dir="$flutter_root/bin/cache"
+mkdir -p "$cache_dir" "$flutter_root/bin/internal"
+
+printf '%s\n' "$engine_revision" > "$cache_dir/engine.stamp"
+printf '\n' > "$cache_dir/engine.realm"
+printf '%s\n' "$engine_revision" > "$cache_dir/engine-dart-sdk.stamp"
+printf '%s\n' "$engine_revision" > "$cache_dir/engine_stamp.stamp"
+python3 - "$cache_dir/engine_stamp.json" "$engine_revision" "$engine_revision_date" <<'PY'
+import json
+import sys
+import time
+from pathlib import Path
+
+path = Path(sys.argv[1])
+engine_revision = sys.argv[2]
+engine_revision_date = sys.argv[3]
+stamp = {
+    "build_time_ms": int(time.time() * 1000),
+    "git_revision": engine_revision,
+    "git_revision_date": engine_revision_date,
+    "content_hash": engine_revision,
+}
+path.write_text(json.dumps(stamp, separators=(",", ":")) + "\n")
+PY
+
+cat > "$flutter_root/bin/internal/bootstrap.sh" <<EOF
+#!/usr/bin/env bash
+export FLUTTER_PREBUILT_ENGINE_VERSION="\${FLUTTER_PREBUILT_ENGINE_VERSION:-$engine_revision}"
+EOF
+chmod +x "$flutter_root/bin/internal/bootstrap.sh"
+
 FLUTTER_ROOT="$flutter_root" \
 DART_ROOT="$dart_root" \
 ENGINE_SRC="$engine_src" \

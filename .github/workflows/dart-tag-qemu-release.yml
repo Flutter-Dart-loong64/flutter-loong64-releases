@@ -31,10 +31,17 @@ jobs:
           dart_tag="${INPUT_DART_TAG:-}"
           if [[ -z "$dart_tag" ]]; then
             dart_tag="$(
-              git ls-remote --tags --sort=-version:refname https://github.com/dart-lang/sdk.git 'refs/tags/[0-9]*' |
-                awk '{print $2}' |
-                sed 's#refs/tags/##; s#\\^{}##' |
-                head -1
+              git ls-remote --tags https://github.com/dart-lang/sdk.git 'refs/tags/[0-9]*' |
+                awk '{
+                  ref = $2
+                  sub(/^refs\/tags\//, "", ref)
+                  sub(/\^\{\}$/, "", ref)
+                  if (!seen[ref]++) {
+                    print ref
+                  }
+                }' |
+                sort -V |
+                tail -n 1
             )"
           fi
 
