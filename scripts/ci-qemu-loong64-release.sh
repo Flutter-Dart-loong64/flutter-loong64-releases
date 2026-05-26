@@ -38,6 +38,15 @@ cd "$workspace"
 git config --global user.name "${GIT_COMMITTER_NAME:-guanzi008}"
 git config --global user.email "${GIT_COMMITTER_EMAIL:-245205080@qq.com}"
 
+patch_boringssl_loong64_target() {
+  local target_h="$1"
+
+  if [[ -f "$target_h" ]] && ! grep -q "OPENSSL_LOONGARCH64" "$target_h"; then
+    perl -0pi -e 's/#elif defined\(__riscv\) && __SIZEOF_POINTER__ == 8/#elif defined(__loongarch64) || (defined(__loongarch__) \&\& __loongarch_grlen == 64)\n#define OPENSSL_64_BIT\n#define OPENSSL_LOONGARCH64\n#elif defined(__riscv) \&\& __SIZEOF_POINTER__ == 8/' \
+      "$target_h"
+  fi
+}
+
 if [[ ! -d tools/depot_tools ]]; then
   git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git tools/depot_tools
 fi
@@ -48,9 +57,12 @@ gclient=(python3 "$workspace/tools/depot_tools/gclient.py")
 
 if command -v clang++-19 >/dev/null 2>&1; then
   mkdir -p "$workspace/tools/clang-bin"
-  for tool in clang clang++ clang-cpp llvm-ar llvm-nm llvm-objcopy llvm-readelf llvm-strip lld ld.lld; do
+  for tool in clang clang++ clang-cpp llvm-ar llvm-ranlib llvm-nm llvm-objcopy llvm-objdump llvm-readelf llvm-strip lld ld.lld; do
     if [[ -x "/usr/lib/llvm-19/bin/$tool" ]]; then
       ln -sfn "/usr/lib/llvm-19/bin/$tool" "$workspace/tools/clang-bin/$tool"
+      if [[ "$tool" == llvm-* && ! -e "/usr/bin/$tool" ]]; then
+        ln -sfn "/usr/lib/llvm-19/bin/$tool" "/usr/bin/$tool"
+      fi
     fi
   done
   export PATH="$workspace/tools/clang-bin:$PATH"
@@ -66,6 +78,17 @@ fi
 cd "$dart_workspace"
 if [[ ! -f .gclient ]]; then
   "${gclient[@]}" config --name=sdk https://github.com/Flutter-Dart-loong64/sdk.git
+fi
+if [[ -d sdk/.git ]]; then
+  for dep in sdk/third_party/boringssl/src sdk/third_party/devtools; do
+    if [[ -d "$dep/.git" ]]; then
+      git -C "$dep" reset --hard
+      git -C "$dep" clean -fd
+    fi
+  done
+  git -C sdk remote set-url origin https://github.com/Flutter-Dart-loong64/sdk.git
+  git -C sdk fetch --no-tags origin main
+  git -C sdk checkout -B main FETCH_HEAD
 fi
 "${gclient[@]}" sync -D --no-history --nohooks --ignore-dep-type=cipd
 
@@ -93,6 +116,38 @@ if ! git merge-base upstream/main origin/main >/dev/null 2>&1; then
   echo "Unable to find a merge base between upstream/main and the Loong64 fork main branch." >&2
   exit 1
 fi
+
+ensure_devtools_checkout() {
+  local devtools_rev devtools_dir
+
+  devtools_rev="$(
+    python3 - <<'PY'
+from pathlib import Path
+import re
+
+deps = Path("DEPS").read_text()
+match = re.search(r'"devtools_rev":\s*"([^"]+)"', deps)
+if not match:
+    raise SystemExit("Unable to find devtools_rev in Dart SDK DEPS")
+print(match.group(1))
+PY
+  )"
+  devtools_dir="$dart_root/third_party/devtools"
+
+  if [[ ! -d "$devtools_dir/.git" ]]; then
+    rm -rf "$devtools_dir"
+    git clone --no-checkout https://github.com/flutter/devtools.git "$devtools_dir"
+  fi
+
+  if ! git -C "$devtools_dir" cat-file -e "$devtools_rev^{commit}" 2>/dev/null; then
+    git -C "$devtools_dir" fetch --no-tags --depth=1 origin "$devtools_rev" ||
+      git -C "$devtools_dir" fetch --no-tags --depth=256 origin main master
+  fi
+
+  git -C "$devtools_dir" checkout --detach "$devtools_rev"
+  ln -sfn packages/devtools_shared "$devtools_dir/devtools_shared"
+  ln -sfn packages/devtools_app/web "$devtools_dir/web"
+}
 
 mapfile -t loong64_commits < <(
   git rev-list --reverse --cherry-pick --right-only upstream/main...origin/main
@@ -126,7 +181,11 @@ if [[ ! -x tools/sdks/dart-sdk/bin/dart ]]; then
   echo "The Loong64 Dart SDK bootstrap archive did not provide tools/sdks/dart-sdk/bin/dart." >&2
   exit 1
 fi
+
+ensure_devtools_checkout
+patch_boringssl_loong64_target third_party/boringssl/src/include/openssl/target.h
 python3 tools/generate_package_config.py
+python3 tools/generate_sdk_version_file.py
 
 mkdir -p buildtools/ninja
 ln -sfn "$system_gn" buildtools/gn
@@ -169,6 +228,8 @@ lines = [
     '    "custom_deps": {',
 ]
 for path in dart_paths + extra_paths:
+    if path == "engine/src/flutter/third_party/dart":
+        continue
     lines.append(f'      "{path}": None,')
 lines += [
     "    },",
@@ -209,11 +270,7 @@ if [[ -f flutter/third_party/swiftshader/src/Reactor/BUILD.gn ]] &&
     flutter/third_party/swiftshader/src/Reactor/BUILD.gn
 fi
 
-if [[ -f flutter/third_party/boringssl/src/include/openssl/target.h ]] &&
-   ! grep -q "OPENSSL_LOONGARCH64" flutter/third_party/boringssl/src/include/openssl/target.h; then
-  perl -0pi -e 's/#elif defined\(__riscv\) && __SIZEOF_POINTER__ == 8/#elif defined(__loongarch64)\n#define OPENSSL_64_BIT\n#define OPENSSL_LOONGARCH64\n#elif defined(__riscv) \&\& __SIZEOF_POINTER__ == 8/' \
-    flutter/third_party/boringssl/src/include/openssl/target.h
-fi
+patch_boringssl_loong64_target flutter/third_party/boringssl/src/include/openssl/target.h
 
 if [[ -f flutter/third_party/libpng/BUILD.gn ]] &&
    ! grep -q "loongarch_lsx_init.c" flutter/third_party/libpng/BUILD.gn; then
