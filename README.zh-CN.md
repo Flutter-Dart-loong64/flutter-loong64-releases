@@ -19,6 +19,8 @@ native target metadata -> sdk native assets / VM support -> engine Loong64 artif
 
 本仓库只发布 SDK、runtime 和 engine artifacts，不发布具体 Flutter 应用。
 
+在独立 Dart pub 服务可用之前，Loong64 专用 native-assets 包可以先放在 [`Flutter-Dart-loong64/pub-packages`](https://github.com/Flutter-Dart-loong64/pub-packages) 临时仓库。这个仓库从 `Flutter-Dart-loong64/native` fork 同步包源码，可以通过 Git dependency overrides 使用 `hooks_runner`、`hooks`、`code_assets` 和 `data_assets` 等包。
+
 ## 目标平台
 
 - 架构：`loongarch64` / `loong64`
@@ -31,14 +33,13 @@ native target metadata -> sdk native assets / VM support -> engine Loong64 artif
 
 当前发布版本：
 
-- Release tag：`v3.45.0-1.0.pre-198`
-- Flutter SDK 版本：`3.45.0-1.0.pre-198`
-- Flutter framework revision：`0fed394754392b30db4cbce30170eb91675dc923`
-- Dart SDK 版本：`3.13.0-edge.814677061617134b666f6b5e3bcc42476911014b`
-- Dart SDK revision：`814677061617134b666f6b5e3bcc42476911014b`
+- Release tag：`v3.46.0-1.0.pre-327`
+- Flutter SDK 版本：`3.46.0-1.0.pre-327`
+- Flutter framework revision：`69c87127a40b5c0d735611f9026c3b16a2c02369`
+- Dart SDK 版本：`3.13.0-edge.2ea45c8966a8f1769ce4313a80cd829f46144583`
+- Dart SDK revision：`2ea45c8966a8f1769ce4313a80cd829f46144583`
 - DevTools 版本：`2.58.0`
-- Flutter Engine 源码 revision：`0fed394754392b30db4cbce30170eb91675dc923`
-- Engine content hash：`a70565e489b0c46279f748952c761e394cea3566`
+- Flutter Engine 源码 revision：`69c87127a40b5c0d735611f9026c3b16a2c02369`
 - Engine artifact 目标：`linux_loong64`
 - Engine 构建选项：Linux GTK debug/profile/release，启用 `--enable-fontconfig`
 
@@ -55,12 +56,12 @@ export DOWNLOAD_DIR=/path/to/download-directory
 mkdir -p "$INSTALL_DIR" "$DOWNLOAD_DIR"
 cd "$DOWNLOAD_DIR"
 
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-198/flutter-sdk-linux-loong64-3.45.0-1.0.pre-198-0fed39475439.tar.xz
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-198/SHA256SUMS
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.46.0-1.0.pre-327/flutter-sdk-linux-loong64-3.46.0-1.0.pre-327-69c87127a40b.tar.xz
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.46.0-1.0.pre-327/SHA256SUMS
 
 sha256sum -c SHA256SUMS
 
-tar -xf flutter-sdk-linux-loong64-3.45.0-1.0.pre-198-0fed39475439.tar.xz -C "$INSTALL_DIR"
+tar -xf flutter-sdk-linux-loong64-3.46.0-1.0.pre-327-69c87127a40b.tar.xz -C "$INSTALL_DIR"
 ```
 
 配置环境变量：
@@ -111,8 +112,8 @@ export DART_DOWNLOAD_DIR=/path/to/download-directory
 mkdir -p "$DART_INSTALL_DIR" "$DART_DOWNLOAD_DIR"
 cd "$DART_DOWNLOAD_DIR"
 
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-198/dart-sdk-linux-loong64-3.45.0-1.0.pre-198-814677061617.tar.xz
-tar -xf dart-sdk-linux-loong64-3.45.0-1.0.pre-198-814677061617.tar.xz -C "$DART_INSTALL_DIR"
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.46.0-1.0.pre-327/dart-sdk-linux-loong64-3.46.0-1.0.pre-327-2ea45c8966a8.tar.xz
+tar -xf dart-sdk-linux-loong64-3.46.0-1.0.pre-327-2ea45c8966a8.tar.xz -C "$DART_INSTALL_DIR"
 
 export PATH="$DART_INSTALL_DIR/dart-sdk/bin:$PATH"
 
@@ -123,7 +124,7 @@ dart pub --help
 校验 Dart SDK：
 
 ```bash
-wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.45.0-1.0.pre-198/SHA256SUMS
+wget https://github.com/Flutter-Dart-loong64/flutter-loong64-releases/releases/download/v3.46.0-1.0.pre-327/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
@@ -226,7 +227,7 @@ ldd "$engine_cache/libflutter_linux_gtk.so" | grep fontconfig
 
 Git tag 使用纯版本号，不把架构写进 tag，例如：
 
-- `v3.45.0-1.0.pre-198`
+- `v3.46.0-1.0.pre-327`
 
 资产文件名保留架构信息：
 
@@ -239,8 +240,8 @@ Git tag 使用纯版本号，不把架构写进 tag，例如：
 
 本仓库包含两个 GitHub Actions workflow：
 
-- `Sync Loong64 Forks`：把 `sdk`、`engine`、`flutter`、`native` fork 分支变基到各自上游分支。它只更新 fork 分支，不构建、不发布 release。发生冲突时对应仓库会中止并跳过，不会改动 fork。
-- `Dart Tag QEMU Loong64 Release`：只基于上游 Dart SDK tag 构建发布包，不因普通分支变基或 fork 提交触发发布构建。定时任务检测最新上游 Dart tag，如果对应 GitHub Release 已存在就跳过。它只会把 fork 分支相对上游 `main` 多出来的 Loong64 提交应用到目标 tag；如果补丁无法干净应用到该 tag，本次发布构建会跳过。默认容器镜像不适用时，可以通过仓库变量 `LOONG64_QEMU_IMAGE` 指定镜像。发布 tag 使用纯版本号，例如 `v3.13.0`；资产文件名中保留 `loong64` 架构标识。
+- `Sync Loong64 Maintenance Lines`：把上游更新合并进 `sdk`、`engine`、`flutter`、`native` 维护分支。它不重写分支历史，不构建、不发布 release。发生合并冲突时对应仓库会中止并跳过，不会改动 fork。
+- `Flutter QEMU Loong64 Release`：只基于上游 Dart SDK tag 构建发布包，不因普通维护分支合并触发发布构建。定时任务检测最新上游 Dart tag，如果对应 GitHub Release 已经有完整 Loong64 资产就跳过；如果 release 存在但缺少资产，只补传缺失文件，不覆盖已有文件。它只会把 fork 分支相对上游 `main` 多出来的 Loong64 提交应用到目标 tag；如果补丁无法干净应用到该 tag，本次发布构建会跳过。默认容器镜像不适用时，可以通过仓库变量 `LOONG64_QEMU_IMAGE` 指定镜像。发布 tag 使用纯版本号；资产文件名中保留 `loong64` 架构标识。
 
 同步 fork 需要配置 `SYNC_TOKEN` secret，并给它 fork 仓库写权限；没有这个 secret 时 workflow 会直接跳过，不改动任何仓库。
 

@@ -21,6 +21,8 @@ The effective build order is:
 native target metadata -> Dart SDK / VM -> Flutter Engine -> Flutter SDK cache -> release archives
 ```
 
+Before a dedicated Dart pub server is available, mirror Loong64-specific native-assets packages into `Flutter-Dart-loong64/pub-packages` and consume them with Git dependency overrides. Keep `Flutter-Dart-loong64/native` as the source fork for package changes, and refresh the temporary package repository when those package revisions change.
+
 ## 1. Install Packages
 
 Install the normal Flutter Linux desktop dependencies plus LoongArch64 build tools:
@@ -204,13 +206,13 @@ FLUTTER_ROOT="$WORKSPACE/flutter" \
 DART_ROOT="$WORKSPACE/dart-sdk" \
 ENGINE_SRC="$WORKSPACE/flutter/engine/src" \
 ENGINE_OUT="$WORKSPACE/flutter/bin/cache/artifacts/engine/linux-loong64-release" \
-./scripts/package-loong64-release.sh 3.45.0-1.0.pre-198 "$WORKSPACE/releases/3.45.0-1.0.pre-198"
+./scripts/package-loong64-release.sh 3.46.0-1.0.pre-327 "$WORKSPACE/releases/3.46.0-1.0.pre-327"
 ```
 
 Verify the archives:
 
 ```bash
-cd "$WORKSPACE/releases/3.45.0-1.0.pre-198"
+cd "$WORKSPACE/releases/3.46.0-1.0.pre-327"
 sha256sum -c SHA256SUMS
 tar -tJf flutter-sdk-linux-loong64-*.tar.xz | grep 'linux-loong64-release/libflutter_linux_gtk.so'
 ```
@@ -219,9 +221,9 @@ After publishing, add a deployment record to [releases/HISTORY.md](releases/HIST
 
 ## 8. Automation
 
-`Sync Loong64 Forks` rebases the Loong64 fork branches against upstream. It uses `SYNC_TOKEN`; if the token is absent or a rebase conflicts, the workflow skips without rewriting the fork branch.
+`Sync Loong64 Maintenance Lines` merges upstream changes into the Loong64 maintenance branches. It uses `SYNC_TOKEN`; if the token is absent or a merge conflicts, the workflow skips without changing the fork branch.
 
-`Dart Tag QEMU Loong64 Release` builds only from an upstream Dart SDK tag. It does not build from ordinary fork rebases or branch commits. The scheduled run polls the latest upstream Dart tag and skips if the matching GitHub Release already exists. It discovers the Loong64 commits on the fork branch ahead of upstream `main`, applies only those commits to the selected Dart SDK tag, and skips the release if a patch conflicts. The default image can be overridden with the repository variable `LOONG64_QEMU_IMAGE`. Full Flutter and engine builds under QEMU can be slow; native LoongArch64 release builds remain the preferred path for production artifacts.
+`Flutter QEMU Loong64 Release` builds only from an upstream Dart SDK tag. It does not build from ordinary maintenance-branch merges. The scheduled run polls the latest upstream Dart tag and skips if the matching GitHub Release already has complete Loong64 assets. If a release exists but is missing assets, the workflow uploads only the missing files and keeps existing assets unchanged. It discovers the Loong64 commits on the fork branch ahead of upstream `main`, applies only those commits to the selected Dart SDK tag, and skips the release if a patch conflicts. The default image can be overridden with the repository variable `LOONG64_QEMU_IMAGE`. Full Flutter and engine builds under QEMU can be slow; native LoongArch64 release builds remain the preferred path for production artifacts.
 
 ## 9. Common Failure Modes
 

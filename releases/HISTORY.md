@@ -2,6 +2,31 @@
 
 This file records the deployment source information for published Loong64 Flutter releases. Binary archives are attached to GitHub Releases; they are not stored in git.
 
+## v3.46.0-1.0.pre-327
+
+- Release date: 2026-06-28
+- Flutter SDK version: `3.46.0-1.0.pre-327`
+- Flutter framework revision: `69c87127a40b5c0d735611f9026c3b16a2c02369`
+- Dart SDK version: `3.13.0-edge.2ea45c8966a8f1769ce4313a80cd829f46144583`
+- Dart SDK revision: `2ea45c8966a8f1769ce4313a80cd829f46144583`
+- Flutter Engine source revision: `69c87127a40b5c0d735611f9026c3b16a2c02369`
+- Engine target: `linux_release_loong64_gtk`
+- Engine options: Linux GTK release with `--enable-fontconfig`
+- Build host: UOS 25 LoongArch64 new-world
+- Validation:
+  - `dart --version` reports `linux_loong64`.
+  - `flutter --version --suppress-analytics` reports Flutter `3.46.0-1.0.pre-327` and Dart `3.13.0-edge.2ea45c8966a8`.
+  - Release archives include Flutter `.git` metadata, Dart SDK, `flutter_tools.snapshot`, and `linux-loong64-release` engine artifacts.
+  - `sha256sum -c SHA256SUMS` passes on the UOS 25 build host.
+- Assets:
+  - `dart-sdk-linux-loong64-3.46.0-1.0.pre-327-2ea45c8966a8.tar.xz`
+  - `flutter-engine-linux-loong64-gtk-3.46.0-1.0.pre-327-69c87127a40b.tar.xz`
+  - `flutter-sdk-linux-loong64-3.46.0-1.0.pre-327-69c87127a40b.tar.xz`
+- SHA256:
+  - `5d8de045fc12ba6e51507f76e74f54404b354f5d4bd8d8c68015d9d3682c1c12  dart-sdk-linux-loong64-3.46.0-1.0.pre-327-2ea45c8966a8.tar.xz`
+  - `bb1eafb88314885c785e8ad75059c9670c119d3edf44a38d80e6d4f89fab499c  flutter-engine-linux-loong64-gtk-3.46.0-1.0.pre-327-69c87127a40b.tar.xz`
+  - `44c3de9444bd9aa895452d174da4ffbfad92f2b2f11c67d54807d0265e67c57c  flutter-sdk-linux-loong64-3.46.0-1.0.pre-327-69c87127a40b.tar.xz`
+
 ## v3.45.0-1.0.pre-198
 
 - Release date: 2026-05-24

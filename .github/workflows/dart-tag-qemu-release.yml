@@ -13,7 +13,7 @@ on:
         description: "Existing release tag that provides a Loong64 Dart SDK bootstrap. Empty means latest release with a Dart SDK asset."
         required: false
       force_rebuild:
-        description: "Rebuild and replace assets even when the release already has complete Loong64 archives."
+        description: "Rebuild even when the release already has complete Loong64 archives. Existing assets are kept."
         required: false
         type: boolean
         default: false
@@ -174,7 +174,7 @@ jobs:
             else
               should_build=true
               if [[ "$force_rebuild" == true ]]; then
-                echo "Release ${release_tag} exists and force_rebuild is enabled; rebuilding." >> "$GITHUB_STEP_SUMMARY"
+                echo "Release ${release_tag} exists and force_rebuild is enabled; rebuilding and keeping existing assets." >> "$GITHUB_STEP_SUMMARY"
               else
                 echo "Release ${release_tag} exists but Loong64 assets are incomplete; rebuilding." >> "$GITHUB_STEP_SUMMARY"
               fi
@@ -241,43 +241,30 @@ jobs:
 
           release_notes="Loong64 Flutter SDK release ${RELEASE_TAG#v}, built with Dart SDK patches on upstream Dart SDK tag ${DART_TAG}."
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit "$RELEASE_TAG" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "$RELEASE_TAG" \
-              --notes "$release_notes"
-            while IFS= read -r asset; do
-              case "$asset" in
-                dart-sdk-linux-loong64-"${RELEASE_TAG#v}"-*.tar.xz)
-                  gh release delete-asset "$RELEASE_TAG" "$asset" \
-                    --repo "$GITHUB_REPOSITORY" \
-                    --yes
-                  ;;
-                flutter-engine-linux-loong64-gtk-"${RELEASE_TAG#v}"-*.tar.xz)
-                  gh release delete-asset "$RELEASE_TAG" "$asset" \
-                    --repo "$GITHUB_REPOSITORY" \
-                    --yes
-                  ;;
-                flutter-sdk-linux-loong64-"${RELEASE_TAG#v}"-*.tar.xz)
-                  gh release delete-asset "$RELEASE_TAG" "$asset" \
-                    --repo "$GITHUB_REPOSITORY" \
-                    --yes
-                  ;;
-                SHA256SUMS)
-                  gh release delete-asset "$RELEASE_TAG" "$asset" \
-                    --repo "$GITHUB_REPOSITORY" \
-                    --yes
-                  ;;
-              esac
-            done < <(
+            existing_assets="$(
               gh release view "$RELEASE_TAG" \
                 --repo "$GITHUB_REPOSITORY" \
                 --json assets \
                 --jq '.assets[].name'
-            )
-            gh release upload "$RELEASE_TAG" \
-              "$release_dir"/* \
-              --repo "$GITHUB_REPOSITORY" \
-              --clobber
+            )"
+
+            upload_args=()
+            for asset_path in "$release_dir"/*; do
+              asset_name="$(basename "$asset_path")"
+              if grep -Fxq "$asset_name" <<< "$existing_assets"; then
+                echo "Keeping existing release asset: $asset_name"
+              else
+                upload_args+=("$asset_path")
+              fi
+            done
+
+            if (( ${#upload_args[@]} > 0 )); then
+              gh release upload "$RELEASE_TAG" \
+                "${upload_args[@]}" \
+                --repo "$GITHUB_REPOSITORY"
+            else
+              echo "No new release assets to upload." >> "$GITHUB_STEP_SUMMARY"
+            fi
           else
             gh release create "$RELEASE_TAG" \
               "$release_dir"/* \

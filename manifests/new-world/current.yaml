@@ -12,7 +12,7 @@ sources:
   flutter:
     repo: https://github.com/Flutter-Dart-loong64/flutter
     maintenance_branch: loong64-main
-    revision: 9f4f1e35ff92aa21df56acc1ab5512a43ce6503d
+    revision: 69c87127a40b5c0d735611f9026c3b16a2c02369
     upstream:
       repo: https://github.com/flutter/flutter
       branch: master
@@ -20,7 +20,7 @@ sources:
   sdk:
     repo: https://github.com/Flutter-Dart-loong64/sdk
     maintenance_branch: loong64-main
-    revision: cc41bc3d0e3d26fc1197985c9219044fedd6951d
+    revision: 2ea45c8966a8f1769ce4313a80cd829f46144583
     upstream:
       repo: https://github.com/dart-lang/sdk
       branch: main
