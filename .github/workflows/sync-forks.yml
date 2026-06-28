@@ -1,4 +1,4 @@
-name: Sync Loong64 Forks
+name: Sync Loong64 Maintenance Lines
 
 on:
   workflow_dispatch:
@@ -24,22 +24,22 @@ jobs:
           - name: sdk
             fork: Flutter-Dart-loong64/sdk
             upstream: dart-lang/sdk
-            branch: main
+            branch: loong64-main
             upstream_branch: main
           - name: engine
             fork: Flutter-Dart-loong64/engine
             upstream: flutter/engine
-            branch: main
+            branch: loong64-main
             upstream_branch: main
           - name: flutter
             fork: Flutter-Dart-loong64/flutter
             upstream: flutter/flutter
-            branch: master
+            branch: loong64-main
             upstream_branch: master
           - name: native
             fork: Flutter-Dart-loong64/native
             upstream: dart-lang/native
-            branch: main
+            branch: loong64-main
             upstream_branch: main
 
     steps:
@@ -48,7 +48,7 @@ jobs:
         run: |
           echo "Skipping ${{ matrix.name }}; workflow input selected ${{ inputs.repository }}." >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Rebase fork branch
+      - name: Merge upstream into maintenance branch
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.repository == 'all' || inputs.repository == matrix.name }}
         env:
           SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
@@ -82,16 +82,16 @@ jobs:
           git fetch upstream "$UPSTREAM_BRANCH"
 
           before="$(git rev-parse HEAD)"
-          if git rebase "upstream/${UPSTREAM_BRANCH}"; then
+          if git merge --no-ff --no-edit "upstream/${UPSTREAM_BRANCH}"; then
             after="$(git rev-parse HEAD)"
             if [[ "$before" == "$after" ]]; then
               echo "${FORK} ${BRANCH} is already current." >> "$GITHUB_STEP_SUMMARY"
             else
-              git push --force-with-lease origin "HEAD:${BRANCH}"
-              echo "${FORK} ${BRANCH} rebased to ${UPSTREAM}/${UPSTREAM_BRANCH}." >> "$GITHUB_STEP_SUMMARY"
+              git push origin "HEAD:${BRANCH}"
+              echo "${FORK} ${BRANCH} merged ${UPSTREAM}/${UPSTREAM_BRANCH}." >> "$GITHUB_STEP_SUMMARY"
             fi
           else
-            git rebase --abort || true
-            echo "${FORK} ${BRANCH} has rebase conflicts; skipped without changing the fork." >> "$GITHUB_STEP_SUMMARY"
+            git merge --abort || true
+            echo "${FORK} ${BRANCH} has merge conflicts; skipped without changing the fork." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
