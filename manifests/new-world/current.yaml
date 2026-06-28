@@ -1,0 +1,75 @@
+schema: 1
+track: new-world
+target: linux-loong64
+created: 2026-06-28
+
+policy:
+  public_history: append-only
+  upstream_update: merge-or-cherry-pick
+  release_assets: immutable
+
+sources:
+  flutter:
+    repo: https://github.com/Flutter-Dart-loong64/flutter
+    maintenance_branch: loong64-main
+    revision: bb2da38c0e428413659a49e48c202d457fd5766f
+    upstream:
+      repo: https://github.com/flutter/flutter
+      branch: master
+      revision: 9d5a74e9e732ec10ea80c274afdf672e5fa08d65
+  sdk:
+    repo: https://github.com/Flutter-Dart-loong64/sdk
+    maintenance_branch: loong64-main
+    revision: 58a7120ac7661f8a13b849c64967b9a993671a20
+    upstream:
+      repo: https://github.com/dart-lang/sdk
+      branch: main
+      revision: feab749acb551c0dc4c5fddd43b9d07ed0f6b939
+  engine:
+    repo: https://github.com/Flutter-Dart-loong64/engine
+    maintenance_branch: loong64-main
+    revision: 95817d5dbb549a30fbd23e0916c2f57570b3f688
+    upstream:
+      repo: https://github.com/flutter/engine
+      branch: main
+      revision: ae5c3603d013477d37ae301993fc0967d4ad7ed2
+  native:
+    repo: https://github.com/Flutter-Dart-loong64/native
+    maintenance_branch: loong64-main
+    revision: ecd3e9f25002a4d8c7e0f59581363b53177048d6
+    upstream:
+      repo: https://github.com/dart-lang/native
+      branch: main
+      revision: b977618adb05c1b34d74024350cdc1236be7686f
+
+loongarch_changes:
+  flutter:
+    summary:
+      - Linux loong64 target plumbing.
+      - Linux OpenGL compositor fallback for LoongGPU.
+  sdk:
+    summary:
+      - Loong64 Dart SDK and VM support.
+  engine:
+    summary:
+      - Loong64 Flutter engine support.
+  native:
+    summary:
+      - Loong64 native asset target support.
+
+build:
+  dart_sdk: required
+  flutter_engine: required
+  flutter_sdk: required
+  engine_options:
+    - --enable-fontconfig
+
+validation:
+  minimum:
+    - dart --version
+    - flutter --version
+    - flutter doctor -v
+    - flutter build linux --release --target-platform linux-loong64
+  application_smoke:
+    - flutter-linglong-store
+
