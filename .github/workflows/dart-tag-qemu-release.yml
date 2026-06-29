@@ -234,6 +234,7 @@ jobs:
           docker run --rm \
             --platform linux/loong64 \
             -e DART_TAG="$DART_TAG" \
+            -e DART_REF="$DART_REF" \
             -e RELEASE_ID="$release_id" \
             -e BOOTSTRAP_DART_SDK_URL="$BOOTSTRAP_DART_SDK_URL" \
             -v "$PWD:/work/flutter-loong64-releases" \
