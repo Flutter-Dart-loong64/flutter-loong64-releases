@@ -9,6 +9,9 @@ on:
       dart_tag:
         description: "Upstream dart-lang/sdk tag used as the Dart SDK patch base. Empty means latest upstream Dart tag."
         required: false
+      dart_ref:
+        description: "Flutter-Dart-loong64/sdk ref to build directly. Manual builds only; empty keeps the upstream Dart tag patch flow."
+        required: false
       bootstrap_release_tag:
         description: "Existing release tag that provides a Loong64 Dart SDK bootstrap. Empty means latest release with a Dart SDK asset."
         required: false
@@ -28,6 +31,8 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       dart_tag: ${{ steps.tags.outputs.dart_tag }}
+      dart_ref: ${{ steps.tags.outputs.dart_ref }}
+      dart_source_label: ${{ steps.tags.outputs.dart_source_label }}
       release_tag: ${{ steps.tags.outputs.release_tag }}
       bootstrap_dart_url: ${{ steps.tags.outputs.bootstrap_dart_url }}
       should_build: ${{ steps.tags.outputs.should_build }}
@@ -38,6 +43,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           INPUT_FLUTTER_VERSION: ${{ inputs.flutter_version }}
           INPUT_DART_TAG: ${{ inputs.dart_tag }}
+          INPUT_DART_REF: ${{ inputs.dart_ref }}
           INPUT_BOOTSTRAP_RELEASE_TAG: ${{ inputs.bootstrap_release_tag }}
           INPUT_FORCE_REBUILD: ${{ inputs.force_rebuild }}
         run: |
@@ -88,8 +94,11 @@ jobs:
             exit 1
           fi
 
+          dart_ref="${INPUT_DART_REF:-}"
           dart_tag="${INPUT_DART_TAG:-}"
-          if [[ -z "$dart_tag" ]]; then
+          if [[ -n "$dart_ref" ]]; then
+            dart_source_label="Flutter-Dart-loong64/sdk ref ${dart_ref}"
+          elif [[ -z "$dart_tag" ]]; then
             dart_tag="$(
               git ls-remote --tags https://github.com/dart-lang/sdk.git 'refs/tags/[0-9]*' |
                 awk '{
@@ -103,9 +112,12 @@ jobs:
                 sort -V |
                 tail -n 1
             )"
+            dart_source_label="upstream Dart SDK tag ${dart_tag}"
+          else
+            dart_source_label="upstream Dart SDK tag ${dart_tag}"
           fi
 
-          if [[ -z "$dart_tag" ]]; then
+          if [[ -z "$dart_tag" && -z "$dart_ref" ]]; then
             echo "No upstream Dart SDK tag was found." >&2
             exit 1
           fi
@@ -185,6 +197,8 @@ jobs:
 
           {
             echo "dart_tag=$dart_tag"
+            echo "dart_ref=$dart_ref"
+            echo "dart_source_label=$dart_source_label"
             echo "release_tag=$release_tag"
             echo "bootstrap_dart_url=$bootstrap_dart_url"
             echo "should_build=$should_build"
@@ -208,6 +222,7 @@ jobs:
       - name: Build in Loong64 container
         env:
           DART_TAG: ${{ needs.discover.outputs.dart_tag }}
+          DART_REF: ${{ needs.discover.outputs.dart_ref }}
           RELEASE_TAG: ${{ needs.discover.outputs.release_tag }}
           BOOTSTRAP_DART_SDK_URL: ${{ needs.discover.outputs.bootstrap_dart_url }}
           LOONG64_QEMU_IMAGE: ${{ vars.LOONG64_QEMU_IMAGE }}
@@ -231,15 +246,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.discover.outputs.release_tag }}
           DART_TAG: ${{ needs.discover.outputs.dart_tag }}
+          DART_SOURCE_LABEL: ${{ needs.discover.outputs.dart_source_label }}
         run: |
           set -euo pipefail
           release_dir="dist/${RELEASE_TAG#v}"
           if ! compgen -G "$release_dir/*.tar.xz" > /dev/null || [[ ! -f "$release_dir/SHA256SUMS" ]]; then
-            echo "No Loong64 release archives were produced; skipping publish." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            echo "No Loong64 release archives were produced; publish cannot continue." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
           fi
 
-          release_notes="Loong64 Flutter SDK release ${RELEASE_TAG#v}, built with Dart SDK patches on upstream Dart SDK tag ${DART_TAG}."
+          release_notes="Loong64 Flutter SDK release ${RELEASE_TAG#v}, built with ${DART_SOURCE_LABEL}."
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             existing_assets="$(
               gh release view "$RELEASE_TAG" \

@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${DART_TAG:?Set DART_TAG to an upstream dart-lang/sdk tag.}"
 : "${RELEASE_ID:?Set RELEASE_ID to the release archive version.}"
 : "${BOOTSTRAP_DART_SDK_URL:?Set BOOTSTRAP_DART_SDK_URL to a Loong64 Dart SDK archive URL.}"
+
+dart_ref="${DART_REF:-}"
+if [[ -z "$dart_ref" ]]; then
+  : "${DART_TAG:?Set DART_TAG to an upstream dart-lang/sdk tag, or set DART_REF to a Flutter-Dart-loong64/sdk ref.}"
+fi
 
 export DEBIAN_FRONTEND=noninteractive
 workspace="${WORKSPACE:-/work/loong64-build}"
@@ -96,25 +100,57 @@ dart_root="$dart_workspace/sdk"
 cd "$dart_root"
 git fetch --no-tags origin main
 git remote get-url upstream >/dev/null 2>&1 || git remote add upstream https://github.com/dart-lang/sdk.git
-git fetch --no-tags upstream main
-git fetch --no-tags --depth=1 upstream "refs/tags/$DART_TAG:refs/tags/$DART_TAG"
 
-if [[ "$(git rev-parse --is-shallow-repository)" == "true" ]]; then
-  for deepen_by in 8 64 512; do
-    if git merge-base upstream/main origin/main >/dev/null 2>&1; then
-      break
+if [[ -n "$dart_ref" ]]; then
+  if ! git fetch --no-tags origin "$dart_ref"; then
+    git fetch origin "$dart_ref"
+  fi
+  git checkout -B loong64-release FETCH_HEAD
+else
+  git fetch --no-tags upstream main
+  git fetch --no-tags --depth=1 upstream "refs/tags/$DART_TAG:refs/tags/$DART_TAG"
+
+  if [[ "$(git rev-parse --is-shallow-repository)" == "true" ]]; then
+    for deepen_by in 8 64 512; do
+      if git merge-base upstream/main origin/main >/dev/null 2>&1; then
+        break
+      fi
+      git fetch --no-tags --deepen="$deepen_by" origin main
+    done
+
+    if ! git merge-base upstream/main origin/main >/dev/null 2>&1; then
+      git fetch --no-tags --unshallow origin main
     fi
-    git fetch --no-tags --deepen="$deepen_by" origin main
-  done
+  fi
 
   if ! git merge-base upstream/main origin/main >/dev/null 2>&1; then
-    git fetch --no-tags --unshallow origin main
+    echo "Unable to find a merge base between upstream/main and the Loong64 fork main branch." >&2
+    exit 1
   fi
-fi
 
-if ! git merge-base upstream/main origin/main >/dev/null 2>&1; then
-  echo "Unable to find a merge base between upstream/main and the Loong64 fork main branch." >&2
-  exit 1
+  mapfile -t loong64_commits < <(
+    git rev-list --reverse --cherry-pick --right-only upstream/main...origin/main
+  )
+
+  if [[ "${#loong64_commits[@]}" -eq 0 ]]; then
+    echo "No Loong64 Dart SDK commits were found on the fork main branch." >&2
+    exit 1
+  fi
+
+  git checkout -B loong64-release "$DART_TAG"
+
+  for commit in "${loong64_commits[@]}"; do
+    if ! git cherry-pick "$commit"; then
+      git cherry-pick --abort || true
+      echo "Loong64 Dart SDK patch $commit does not apply cleanly onto upstream tag $DART_TAG." >&2
+      exit 1
+    fi
+  done
+
+  if [[ "$(git rev-list --count "$DART_TAG"..HEAD)" -ne "${#loong64_commits[@]}" ]]; then
+    echo "Unexpected Dart SDK release commit count after applying Loong64 patches." >&2
+    exit 1
+  fi
 fi
 
 ensure_devtools_checkout() {
@@ -148,30 +184,6 @@ PY
   ln -sfn packages/devtools_shared "$devtools_dir/devtools_shared"
   ln -sfn packages/devtools_app/web "$devtools_dir/web"
 }
-
-mapfile -t loong64_commits < <(
-  git rev-list --reverse --cherry-pick --right-only upstream/main...origin/main
-)
-
-if [[ "${#loong64_commits[@]}" -eq 0 ]]; then
-  echo "No Loong64 Dart SDK commits were found on the fork main branch; skipping release build."
-  exit 0
-fi
-
-git checkout -B loong64-release "$DART_TAG"
-
-for commit in "${loong64_commits[@]}"; do
-  if ! git cherry-pick "$commit"; then
-    git cherry-pick --abort || true
-    echo "Loong64 Dart SDK patch $commit does not apply cleanly onto upstream tag $DART_TAG; skipping release build."
-    exit 0
-  fi
-done
-
-if [[ "$(git rev-list --count "$DART_TAG"..HEAD)" -ne "${#loong64_commits[@]}" ]]; then
-  echo "Unexpected Dart SDK release commit count after applying Loong64 patches." >&2
-  exit 1
-fi
 
 rm -rf tools/sdks/dart-sdk
 mkdir -p tools/sdks

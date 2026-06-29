@@ -241,7 +241,7 @@ Git tag 使用纯版本号，不把架构写进 tag，例如：
 本仓库包含两个 GitHub Actions workflow：
 
 - `Sync Loong64 Maintenance Lines`：把上游更新合并进 `sdk`、`engine`、`flutter`、`native` 维护分支。它不重写分支历史，不构建、不发布 release。发生合并冲突时对应仓库会中止并跳过，不会改动 fork。
-- `Flutter QEMU Loong64 Release`：只基于上游 Dart SDK tag 构建发布包，不因普通维护分支合并触发发布构建。定时任务检测最新上游 Dart tag，如果对应 GitHub Release 已经有完整 Loong64 资产就跳过；如果 release 存在但缺少资产，只补传缺失文件，不覆盖已有文件。它只会把 fork 分支相对上游 `main` 多出来的 Loong64 提交应用到目标 tag；如果补丁无法干净应用到该 tag，本次发布构建会跳过。默认容器镜像不适用时，可以通过仓库变量 `LOONG64_QEMU_IMAGE` 指定镜像。发布 tag 使用纯版本号；资产文件名中保留 `loong64` 架构标识。
+- `Flutter QEMU Loong64 Release`：定时发布基于上游 Dart SDK tag 构建，不因普通维护分支合并触发发布构建。定时任务检测最新上游 Dart tag，如果对应 GitHub Release 已经有完整 Loong64 资产就跳过；如果 release 存在但缺少资产，只补传缺失文件，不覆盖已有文件。手动构建 Debian 包时，如果要匹配当前 fork 状态，可以把 `dart_ref` 设为 `Flutter-Dart-loong64/sdk` 的 ref，例如 `main`；这种模式直接构建 fork ref，不再把补丁 cherry-pick 到上游 tag。tag 补丁无法干净应用，或者没有生成归档时，workflow 会失败，不再显示成功但没有发布。默认容器镜像不适用时，可以通过仓库变量 `LOONG64_QEMU_IMAGE` 指定镜像。发布 tag 使用纯版本号；资产文件名中保留 `loong64` 架构标识。
 
 同步 fork 需要配置 `SYNC_TOKEN` secret，并给它 fork 仓库写权限；没有这个 secret 时 workflow 会直接跳过，不改动任何仓库。
 
