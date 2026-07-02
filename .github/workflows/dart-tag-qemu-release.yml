@@ -6,11 +6,16 @@ on:
       flutter_version:
         description: "Flutter SDK release version. Empty means latest upstream flutter/flutter version tag."
         required: false
+      flutter_ref:
+        description: "Flutter-Dart-loong64/flutter ref used to assemble the SDK."
+        default: "loong64-main"
+        required: false
       dart_tag:
         description: "Upstream dart-lang/sdk tag used as the Dart SDK patch base. Empty means latest upstream Dart tag."
         required: false
       dart_ref:
-        description: "Flutter-Dart-loong64/sdk ref to build directly. Manual builds only; empty keeps the upstream Dart tag patch flow."
+        description: "Flutter-Dart-loong64/sdk ref to build directly. Default is loong64-main; clear only to test the dart_tag patch flow."
+        default: "loong64-main"
         required: false
       bootstrap_release_tag:
         description: "Existing release tag that provides a Loong64 Dart SDK bootstrap. Empty means latest release with a Dart SDK asset."
@@ -33,6 +38,7 @@ jobs:
       dart_tag: ${{ steps.tags.outputs.dart_tag }}
       dart_ref: ${{ steps.tags.outputs.dart_ref }}
       dart_source_label: ${{ steps.tags.outputs.dart_source_label }}
+      flutter_ref: ${{ steps.tags.outputs.flutter_ref }}
       release_tag: ${{ steps.tags.outputs.release_tag }}
       bootstrap_dart_url: ${{ steps.tags.outputs.bootstrap_dart_url }}
       should_build: ${{ steps.tags.outputs.should_build }}
@@ -42,6 +48,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           INPUT_FLUTTER_VERSION: ${{ inputs.flutter_version }}
+          INPUT_FLUTTER_REF: ${{ inputs.flutter_ref }}
           INPUT_DART_TAG: ${{ inputs.dart_tag }}
           INPUT_DART_REF: ${{ inputs.dart_ref }}
           INPUT_BOOTSTRAP_RELEASE_TAG: ${{ inputs.bootstrap_release_tag }}
@@ -49,12 +56,13 @@ jobs:
         run: |
           set -euo pipefail
 
+          flutter_ref="${INPUT_FLUTTER_REF:-loong64-main}"
           flutter_version="${INPUT_FLUTTER_VERSION:-}"
           if [[ -z "$flutter_version" ]]; then
             flutter_checkout="$(mktemp -d)"
             git -C "$flutter_checkout" init -q
             git -C "$flutter_checkout" remote add origin https://github.com/Flutter-Dart-loong64/flutter.git
-            git -C "$flutter_checkout" fetch -q --no-tags --depth=512 origin master
+            git -C "$flutter_checkout" fetch -q --no-tags --depth=512 origin "$flutter_ref"
             git -C "$flutter_checkout" checkout -q --detach FETCH_HEAD
             git -C "$flutter_checkout" fetch -q --force https://github.com/flutter/flutter.git '+refs/tags/*:refs/tags/*'
 
@@ -72,7 +80,7 @@ jobs:
             fi
 
             if ! ancestor_ref="$(git -C "$flutter_checkout" merge-base HEAD "$latest_flutter_tag")"; then
-              git -C "$flutter_checkout" fetch -q --no-tags --unshallow origin master
+              git -C "$flutter_checkout" fetch -q --no-tags --unshallow origin "$flutter_ref"
               ancestor_ref="$(git -C "$flutter_checkout" merge-base HEAD "$latest_flutter_tag")"
             fi
 
@@ -94,8 +102,11 @@ jobs:
             exit 1
           fi
 
-          dart_ref="${INPUT_DART_REF:-}"
           dart_tag="${INPUT_DART_TAG:-}"
+          dart_ref="${INPUT_DART_REF:-}"
+          if [[ -z "$dart_ref" && -z "$dart_tag" ]]; then
+            dart_ref="loong64-main"
+          fi
           if [[ -n "$dart_ref" ]]; then
             dart_source_label="Flutter-Dart-loong64/sdk ref ${dart_ref}"
           elif [[ -z "$dart_tag" ]]; then
@@ -199,6 +210,7 @@ jobs:
             echo "dart_tag=$dart_tag"
             echo "dart_ref=$dart_ref"
             echo "dart_source_label=$dart_source_label"
+            echo "flutter_ref=$flutter_ref"
             echo "release_tag=$release_tag"
             echo "bootstrap_dart_url=$bootstrap_dart_url"
             echo "should_build=$should_build"
@@ -223,6 +235,7 @@ jobs:
         env:
           DART_TAG: ${{ needs.discover.outputs.dart_tag }}
           DART_REF: ${{ needs.discover.outputs.dart_ref }}
+          FLUTTER_REF: ${{ needs.discover.outputs.flutter_ref }}
           RELEASE_TAG: ${{ needs.discover.outputs.release_tag }}
           BOOTSTRAP_DART_SDK_URL: ${{ needs.discover.outputs.bootstrap_dart_url }}
           LOONG64_QEMU_IMAGE: ${{ vars.LOONG64_QEMU_IMAGE }}
@@ -235,6 +248,7 @@ jobs:
             --platform linux/loong64 \
             -e DART_TAG="$DART_TAG" \
             -e DART_REF="$DART_REF" \
+            -e FLUTTER_REF="$FLUTTER_REF" \
             -e RELEASE_ID="$release_id" \
             -e BOOTSTRAP_DART_SDK_URL="$BOOTSTRAP_DART_SDK_URL" \
             -v "$PWD:/work/flutter-loong64-releases" \
@@ -248,6 +262,7 @@ jobs:
           RELEASE_TAG: ${{ needs.discover.outputs.release_tag }}
           DART_TAG: ${{ needs.discover.outputs.dart_tag }}
           DART_SOURCE_LABEL: ${{ needs.discover.outputs.dart_source_label }}
+          FLUTTER_REF: ${{ needs.discover.outputs.flutter_ref }}
         run: |
           set -euo pipefail
           release_dir="dist/${RELEASE_TAG#v}"
@@ -256,7 +271,7 @@ jobs:
             exit 1
           fi
 
-          release_notes="Loong64 Flutter SDK release ${RELEASE_TAG#v}, built with ${DART_SOURCE_LABEL}."
+          release_notes="Loong64 Flutter SDK release ${RELEASE_TAG#v}, built from Flutter-Dart-loong64/flutter ${FLUTTER_REF} with ${DART_SOURCE_LABEL}."
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             existing_assets="$(
               gh release view "$RELEASE_TAG" \

@@ -5,6 +5,8 @@ set -euo pipefail
 : "${BOOTSTRAP_DART_SDK_URL:?Set BOOTSTRAP_DART_SDK_URL to a Loong64 Dart SDK archive URL.}"
 
 dart_ref="${DART_REF:-}"
+flutter_ref="${FLUTTER_REF:-loong64-main}"
+sdk_bootstrap_ref="${dart_ref:-main}"
 if [[ -z "$dart_ref" ]]; then
   : "${DART_TAG:?Set DART_TAG to an upstream dart-lang/sdk tag, or set DART_REF to a Flutter-Dart-loong64/sdk ref.}"
 fi
@@ -91,14 +93,14 @@ if [[ -d sdk/.git ]]; then
     fi
   done
   git -C sdk remote set-url origin https://github.com/Flutter-Dart-loong64/sdk.git
-  git -C sdk fetch --no-tags origin main
-  git -C sdk checkout -B main FETCH_HEAD
+  git -C sdk fetch --no-tags origin "$sdk_bootstrap_ref"
+  git -C sdk checkout -B loong64-bootstrap FETCH_HEAD
 fi
 "${gclient[@]}" sync -D --no-history --nohooks --ignore-dep-type=cipd
 
 dart_root="$dart_workspace/sdk"
 cd "$dart_root"
-git fetch --no-tags origin main
+git fetch --no-tags origin "$sdk_bootstrap_ref"
 git remote get-url upstream >/dev/null 2>&1 || git remote add upstream https://github.com/dart-lang/sdk.git
 
 if [[ -n "$dart_ref" ]]; then
@@ -207,11 +209,12 @@ ln -sfn "$system_ninja" buildtools/ninja/ninja
 
 cd "$workspace"
 if [[ ! -d "$flutter_root" ]]; then
-  git clone https://github.com/Flutter-Dart-loong64/flutter.git "$flutter_root"
+  git clone --no-checkout https://github.com/Flutter-Dart-loong64/flutter.git "$flutter_root"
 else
-  git -C "$flutter_root" fetch origin master
-  git -C "$flutter_root" checkout -B master origin/master
+  git -C "$flutter_root" remote set-url origin https://github.com/Flutter-Dart-loong64/flutter.git
 fi
+git -C "$flutter_root" fetch --no-tags origin "$flutter_ref"
+git -C "$flutter_root" checkout -B loong64-release-flutter FETCH_HEAD
 
 cd "$flutter_root"
 python3 - <<'PY'
