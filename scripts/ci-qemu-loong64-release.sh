@@ -82,8 +82,21 @@ if [[ -z "$clang_major" || "$clang_major" -lt 18 ]]; then
 fi
 
 cd "$dart_workspace"
-if [[ ! -f .gclient ]]; then
-  "${gclient[@]}" config --name=sdk https://github.com/Flutter-Dart-loong64/sdk.git
+cat > .gclient <<'EOF'
+solutions = [
+  {
+    "name": "sdk",
+    "url": "https://github.com/Flutter-Dart-loong64/sdk.git",
+    "deps_file": "DEPS",
+    "managed": False,
+  },
+]
+target_os = ["linux"]
+target_cpu = ["loong64"]
+EOF
+
+if [[ ! -d sdk/.git ]]; then
+  git clone --no-checkout https://github.com/Flutter-Dart-loong64/sdk.git sdk
 fi
 if [[ -d sdk/.git ]]; then
   for dep in sdk/third_party/boringssl/src sdk/third_party/devtools; do
@@ -154,6 +167,8 @@ else
     exit 1
   fi
 fi
+
+"${gclient[@]}" sync -D --no-history --nohooks --ignore-dep-type=cipd
 
 ensure_devtools_checkout() {
   local devtools_rev devtools_dir
